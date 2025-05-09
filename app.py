@@ -1,7 +1,15 @@
 
 import streamlit as st
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import json
+from pesos import (
+    obtener_pesos_recomendados,
+    validar_pesos_manuales,
+    texto_explicacion_pesos,
+    NOMBRES_METRICAS
+)
 from modelo import SostenibilidadIoT
 
 st.set_page_config(page_title="Dashboard Sostenibilidad IoT", layout="wide")
@@ -21,7 +29,7 @@ with st.expander("Ver métricas clave del modelo"):
     8. **IM - Mantenimiento:** Impacto de baterías, reemplazos y desgaste.
     """)
 
-st.markdown("## Criterios de Asignación de Pesos")
+st.markdown("## Criterios de Ajuste de Pesos")
 with st.expander("Ver explicación del porqué de los pesos asignados"):
     st.markdown("""
     Las siguientes ponderaciones representan la importancia relativa de cada métrica en el índice de sostenibilidad. Estas ponderaciones pueden ser modificadas por el usuario según su enfoque institucional o particular.
@@ -84,17 +92,109 @@ with col1:
         submitted = st.form_submit_button("Calcular")
 
 with col2:
-    st.subheader("Ajuste de Peso Relativo por Métrica del Dispositivo")
-    pesos_usuario = {
-        'CE': st.slider("Peso CE", 0.0, 1.0, 0.22),
-        'HC': st.slider("Peso HC", 0.0, 1.0, 0.18),
-        'EW': st.slider("Peso EW", 0.0, 1.0, 0.12),
-        'ER': st.slider("Peso ER", 0.0, 1.0, 0.18),
-        'EE': st.slider("Peso EE", 0.0, 1.0, 0.14),
-        'DP': st.slider("Peso DP", 0.0, 1.0, 0.08),
-        'RC': st.slider("Peso RC", 0.0, 1.0, 0.05),
-        'IM': st.slider("Peso IM", 0.0, 1.0, 0.03)
-    }
+    st.subheader("Ajuste de Pesos por Métrica")
+
+    if 'pesos_manuales' not in st.session_state:
+        st.session_state.pesos_manuales = obtener_pesos_recomendados().copy()
+    
+    modo_pesos = st.radio(
+        "Selecciona el modo de ajuste de pesos:",
+        ("Usar pesos recomendados", "Ajustar pesos manualmente", "Calcular pesos con AHP")
+    )
+
+    if modo_pesos == "Usar pesos recomendados":
+        pesos_usuario = obtener_pesos_recomendados()
+        st.success("Se han cargado los pesos recomendados del modelo AHP+ODS.")
+
+        df_pesos = pd.DataFrame.from_dict(pesos_usuario, orient='index', columns=['Peso'])
+        df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
+        df_pesos = df_pesos.rename_axis('Métrica').reset_index()
+        st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
+
+        with st.expander("Ver explicación del modelo AHP+ODS"):
+            st.markdown(texto_explicacion_pesos())
+
+
+    elif modo_pesos == "Ajustar pesos manualmente":
+        st.info("Ingresa el peso de cada métrica (entre 0 y 1). La suma debe ser 1.")
+        
+        if 'config_activa' not in st.session_state:
+            if st.session_state.pesos_manuales == obtener_pesos_recomendados():
+                st.session_state.config_activa = "Recomendados"
+
+        if 'pesos_guardados' not in st.session_state:
+            st.session_state.pesos_guardados = {}
+
+        with st.expander("Gestión de configuraciones personalizadas"):
+            nuevo_nombre = st.text_input("Guardar configuración como", "")
+            if st.button("Guardar configuración") and nuevo_nombre:
+                st.session_state.pesos_guardados[nuevo_nombre] = st.session_state.pesos_manuales.copy()
+                st.session_state.config_activa = nuevo_nombre
+                st.success(f"Configuración '{nuevo_nombre}' guardada y activada.")
+                st.rerun()
+
+            if st.session_state.pesos_guardados:
+                seleccion = st.selectbox("Seleccionar configuración guardada", list(st.session_state.pesos_guardados.keys()))
+                col_config = st.columns(2)
+                if col_config[0].button("Aplicar configuración"):
+                    st.session_state.pesos_manuales = st.session_state.pesos_guardados[seleccion].copy()
+                    st.session_state.config_activa = seleccion
+                    st.rerun()
+                if col_config[1].button("Eliminar configuración"):
+                    del st.session_state.pesos_guardados[seleccion]
+                    st.success(f"Configuración '{seleccion}' eliminada.")
+                    st.rerun()
+            
+            if st.button("Reiniciar configuracion"):
+                for k, v in obtener_pesos_recomendados().items():
+                    st.session_state[f"peso_manual_{k}"] = v
+                st.session_state.pesos_manuales = obtener_pesos_recomendados().copy()
+                st.session_state.config_activa = "Recomendados"
+                st.rerun()
+
+        nombre = st.session_state.get('config_activa')
+        if nombre and nombre != "Recomendados":
+            st.success(f"Configuración activa: '{nombre}'")
+        elif nombre == "Recomendados":
+            st.info("Configuración activa: Recomendados")
+        else:
+            st.warning("Configuración activa: Personalizada")
+
+        pesos_usuario = {}
+        total_temporal = 0
+
+
+        for id, nombre_metrica in NOMBRES_METRICAS.items():
+            valor = st.number_input(
+                f"{nombre_metrica}",
+                min_value=0.0,
+                max_value=1.0,
+                step=0.01,
+                format="%.3f",
+                value=st.session_state.pesos_manuales.get(id, 0.1),
+                key=f"peso_manual_{id}"
+            )
+            pesos_usuario[id] = valor
+            total_temporal += valor
+
+        st.metric("Suma total de pesos", f"{total_temporal:.3f}")
+
+        for k in NOMBRES_METRICAS:
+            actual = st.session_state.get(f"peso_manual_{k}", 0)
+            original = st.session_state.pesos_manuales.get(k, 0)
+            if abs(actual - original) > 1e-6:
+                st.session_state.config_activa = None
+                break
+
+
+        pesos_usuario, es_valido = validar_pesos_manuales(pesos_usuario)
+        if not es_valido:
+            st.warning("Los pesos fueron normalizados automáticamente para que sumen 1.")
+
+
+    elif modo_pesos == "Calcular pesos con AHP":
+        st.warning("Esta funcionalidad está en desarrollo. Pronto podrás comparar métricas usando la escala de Saaty.")
+        pesos_usuario = obtener_pesos_recomendados()  # fallback temporal
 
 if submitted:
     sensor = SostenibilidadIoT(nombre)

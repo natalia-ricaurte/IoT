@@ -102,3 +102,14 @@ class SostenibilidadIoT:
             'metricas_normalizadas': metricas_normalizadas,
             'indice_sostenibilidad': indice_sostenibilidad
         }
+    
+    NOMBRES_METRICAS = {
+    'CE': 'Consumo de Energía',
+    'HC': 'Huella de Carbono',
+    'EW': 'E-waste',
+    'ER': 'Energía Renovable',
+    'EE': 'Eficiencia Energética',
+    'DP': 'Durabilidad',
+    'RC': 'Reciclabilidad',
+    'IM': 'Mantenimiento'
+}
