@@ -6,7 +6,7 @@ from modelo import SostenibilidadIoT
 st.set_page_config(page_title="Dashboard Sostenibilidad IoT", layout="wide")
 st.title("Dashboard de Evaluación de Sostenibilidad - Dispositivos IoT")
 
-
+# Inicializa la lista de dispositivos en session_state si no existe
 if "dispositivos" not in st.session_state:
     st.session_state.dispositivos = []
 
@@ -59,7 +59,6 @@ with col1:
                 Wc = st.number_input("Peso componente (g)", value=20, help="Peso promedio de cada componente reemplazado en gramos.")
                 W0 = st.number_input("Peso nuevo (g)", value=200, help="Peso total del dispositivo cuando es nuevo.")
                 W = st.number_input("Peso final (g)", value=180, help="Peso final del dispositivo después del uso.")
-
 
         submitted = st.form_submit_button("Añadir dispositivo")
 
@@ -140,3 +139,40 @@ if st.session_state.dispositivos:
 
             for r in recomendaciones:
                 st.info(r)
+
+    # Botón para calcular el índice de sostenibilidad total y mostrar el gráfico de araña
+if st.button("Calcular Índice de Sostenibilidad Total"):
+    total_indices = [resultado['indice_sostenibilidad'] for _, resultado in st.session_state.dispositivos]
+    promedio_total = sum(total_indices) / len(total_indices)
+
+    # Calcular los promedios de las métricas normalizadas
+    metricas_totales = [resultado["metricas_normalizadas"] for _, resultado in st.session_state.dispositivos]
+    promedio_metricas = {key: sum(d[key] for d in metricas_totales) / len(metricas_totales) for key in metricas_totales[0]}
+
+    # Mostrar el índice total
+    st.success(f"El Índice de Sostenibilidad Total es: {promedio_total:.2f}/10")
+
+    # Mostrar el gráfico de araña para los promedios
+    st.subheader("Gráfico de Araña - Promedio de Métricas")
+    def radar_chart(metricas, titulo):
+        etiquetas = {
+            'CE': 'Cons. Energía', 'HC': 'Huella CO₂', 'EW': 'E-waste',
+            'ER': 'Energía Renov.', 'EE': 'Eficiencia', 'DP': 'Durabilidad',
+            'RC': 'Reciclabilidad', 'IM': 'Mantenimiento'
+        }
+        labels = [etiquetas[m] for m in metricas]
+        valores = list(metricas.values())
+        valores += valores[:1]
+        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+        angles += angles[:1]
+
+        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+        ax.plot(angles, valores, color='teal', linewidth=2)
+        ax.fill(angles, valores, color='skyblue', alpha=0.4)
+        ax.set_yticks([2, 4, 6, 8, 10])
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(labels)
+        ax.set_title(titulo, y=1.1)
+        st.pyplot(fig)
+
+    radar_chart(promedio_metricas, "Promedio de Métricas Normalizadas")
