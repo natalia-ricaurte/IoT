@@ -1,5 +1,5 @@
-
 import numpy as np
+from pesos import NOMBRES_METRICAS
 
 class SostenibilidadIoT:
     def __init__(self, nombre_dispositivo):

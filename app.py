@@ -1,18 +1,229 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import json
+from pesos import (
+    obtener_pesos_recomendados,
+    validar_pesos_manuales,
+    NOMBRES_METRICAS,
+    razon_consistencia,
+    ahp_attributes
+)
 from modelo import SostenibilidadIoT
 
+def inicializar_pesos_manuales():
+    """Inicializa los pesos manuales con los valores recomendados."""
+    pesos_recomendados = obtener_pesos_recomendados()
+    for id in NOMBRES_METRICAS:
+        st.session_state[f"peso_manual_{id}"] = float(pesos_recomendados[id])
+    st.session_state.pesos_manuales = pesos_recomendados.copy()
+
+def inicializar_estado():
+    """Inicializa todas las variables de estado necesarias."""
+    if "dispositivos" not in st.session_state:
+        st.session_state.dispositivos = []
+    
+    if 'matriz_ahp_abierta' not in st.session_state:
+        st.session_state.matriz_ahp_abierta = False
+    
+    if 'pesos_manuales' not in st.session_state:
+        inicializar_pesos_manuales()
+    
+    if 'pesos_guardados' not in st.session_state:
+        st.session_state.pesos_guardados = {}
+    
+    if 'matriz_comparacion' not in st.session_state:
+        metricas = list(NOMBRES_METRICAS.keys())
+        n = len(metricas)
+        st.session_state.matriz_comparacion = np.ones((n, n))
+
+def reiniciar_estado():
+    """Reinicia el estado de la aplicación a sus valores iniciales."""
+    st.session_state.dispositivos = []
+    st.session_state.matriz_ahp_abierta = False
+    inicializar_pesos_manuales()
+    st.session_state.pesos_guardados = {}
+    metricas = list(NOMBRES_METRICAS.keys())
+    n = len(metricas)
+    st.session_state.matriz_comparacion = np.ones((n, n))
+    # Reiniciar el modo de pesos al estado inicial
+    st.session_state.modo_pesos_radio = "Usar pesos recomendados"
+    if 'modo_pesos_guardado' in st.session_state:
+        del st.session_state.modo_pesos_guardado
+
+def radar_chart(metricas, titulo):
+    etiquetas = {
+        'CE': 'Cons. Energía', 'HC': 'Huella CO₂', 'EW': 'E-waste',
+        'ER': 'Energía Renov.', 'EE': 'Eficiencia', 'DP': 'Durabilidad',
+        'RC': 'Reciclabilidad', 'IM': 'Mantenimiento'
+    }
+    labels = [etiquetas[m] for m in metricas]
+    valores = list(metricas.values())
+    valores += valores[:1]
+    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+    angles += angles[:1]
+
+    fig, ax = plt.subplots(figsize=(6,6), subplot_kw=dict(polar=True))
+    ax.plot(angles, valores, color='teal', linewidth=2)
+    ax.fill(angles, valores, color='skyblue', alpha=0.4)
+    ax.set_yticks([2, 4, 6, 8, 10])
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels)
+    ax.set_title(titulo, y=1.1)
+    st.pyplot(fig)
+
+def calcular_pesos_ahp(metricas):
+    df_criterios = pd.DataFrame(
+        st.session_state.matriz_comparacion,
+        index=metricas,
+        columns=metricas
+    )
+    pesos = ahp_attributes(df_criterios)
+    ic, rc = razon_consistencia(pesos, df_criterios, verbose=False)
+    return pesos, ic, rc
+
+def mostrar_resultados_ahp(pesos, rc):
+    """Muestra los resultados del cálculo AHP."""
+    st.success("Pesos calculados:")
+    # Convertir los pesos a un formato limpio
+    pesos_limpios = {}
+    for k, v in pesos.items():
+        if isinstance(v, dict):
+            val = list(v.values())[0]
+        else:
+            val = v
+        pesos_limpios[k] = float(val)
+    
+    # Crear DataFrame con los pesos
+    metricas_list = list(pesos_limpios.keys())
+    pesos_list = [pesos_limpios[k] for k in metricas_list]
+    nombres_list = [NOMBRES_METRICAS[k] for k in metricas_list]
+    
+    df_pesos = pd.DataFrame({
+        'Métrica': nombres_list,
+        'Peso': pesos_list
+    })
+    st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
+    
+    if rc < 0.1:
+        st.success(f"Razón de Consistencia: {rc:.3f} (La matriz es consistente)")
+    else:
+        st.warning(f"Razón de Consistencia: {rc:.3f} (La matriz NO es consistente)")
+
+def mostrar_matriz_ahp():
+    st.title("Matriz de Comparación por Pares (AHP)")
+    st.info("Edita solo la mitad superior de la tabla. El resto se calcula automáticamente.")
+    st.markdown("""
+    **Escala de Saaty:**
+    - 1: Igual importancia
+    - 3: Moderadamente más importante
+    - 5: Fuertemente más importante
+    - 7: Muy fuertemente más importante
+    - 9: Extremadamente más importante
+    - Valores intermedios (2,4,6,8) cuando sea necesario
+    - Si la métrica de la fila es MENOS importante que la de la columna, usa el recíproco (por ejemplo, 1/3, 1/5, etc.)
+    """)
+    metricas = list(NOMBRES_METRICAS.keys())
+    nombres = [NOMBRES_METRICAS[m] for m in metricas]
+    n = len(metricas)
+    if 'matriz_comparacion' not in st.session_state:
+        st.session_state.matriz_comparacion = np.ones((n, n))
+    
+    # Encabezados de columna
+    cols = st.columns(n+1)
+    cols[0].write("")
+    for j in range(n):
+        cols[j+1].markdown(f"**{nombres[j]}**")
+    
+    # Filas de la matriz
+    for i in range(n):
+        row = st.columns(n+1)
+        row[0].markdown(f"**{nombres[i]}**")
+        for j in range(n):
+            if i == j:
+                row[j+1].markdown('<span style="font-weight:bold;">1.00</span>', unsafe_allow_html=True)
+                st.session_state.matriz_comparacion[i, j] = 1.0
+            elif i < j:
+                valor = row[j+1].number_input(
+                    f"Comparación {nombres[i]} vs {nombres[j]}",
+                    min_value=0.11,
+                    max_value=9.0,
+                    value=float(st.session_state.matriz_comparacion[i, j]) if st.session_state.matriz_comparacion[i, j] != 1.0 else 1.0,
+                    step=0.01,
+                    key=f"matriz_{i}_{j}",
+                    label_visibility="collapsed"
+                )
+                st.session_state.matriz_comparacion[i, j] = valor
+                st.session_state.matriz_comparacion[j, i] = 1/valor
+            else:
+                row[j+1].write(f"{st.session_state.matriz_comparacion[i, j]:.2f}")
+
+    st.markdown("---")
+    
+    # Botones de acción
+    col_calc, col_save, col_space, col_cancel, col_reset = st.columns([1, 1, 2, 1, 1])
+    with col_calc:
+        if st.button("Calcular pesos"):
+            df_criterios = pd.DataFrame(
+                st.session_state.matriz_comparacion,
+                index=metricas,
+                columns=metricas
+            )
+            pesos = ahp_attributes(df_criterios)
+            ic, rc = razon_consistencia(pesos, df_criterios, verbose=False)
+            st.session_state.ahp_resultados = {
+                'pesos': pesos,
+                'ic': ic,
+                'rc': rc
+            }
+            st.rerun()  # Forzar recarga para mostrar solo una vez
+    with col_save:
+        if st.button("Guardar y salir"):
+            if 'ahp_resultados' in st.session_state:
+                pesos = st.session_state.ahp_resultados['pesos']
+                if hasattr(pesos, 'to_dict'):
+                    pesos = pesos.to_dict()
+                st.session_state.pesos_ahp = pesos
+            st.session_state.matriz_ahp_abierta = False
+            if 'modo_pesos_guardado' in st.session_state:
+                st.session_state.modo_pesos_radio = st.session_state.modo_pesos_guardado
+            st.rerun()
+    with col_cancel:
+        if st.button("Cancelar"):
+            st.session_state.matriz_ahp_abierta = False
+            if 'modo_pesos_guardado' in st.session_state:
+                st.session_state.modo_pesos_radio = st.session_state.modo_pesos_guardado
+            st.rerun()
+    with col_reset:
+        if st.button("Reiniciar matriz", help="Reinicia la matriz de comparación a valores iniciales (identidad)", key="btn_reiniciar_matriz"):
+            st.session_state.matriz_comparacion = np.ones((n, n))
+            st.warning("¡La matriz de comparación ha sido reiniciada a valores iniciales!")
+            if 'ahp_resultados' in st.session_state:
+                del st.session_state.ahp_resultados
+            st.rerun()
+
+    # Mostrar resultados si existen
+    if st.session_state.get('ahp_resultados'):
+        mostrar_resultados_ahp(st.session_state.ahp_resultados['pesos'], st.session_state.ahp_resultados['rc'])
+    st.stop()
+
+# --- INICIALIZACIÓN DE LA APLICACIÓN ---
 st.set_page_config(page_title="Dashboard Sostenibilidad IoT", layout="wide")
+inicializar_estado()
+
+# --- CONTROL DE NAVEGACIÓN ---
+if st.session_state.matriz_ahp_abierta:
+    mostrar_matriz_ahp()
+    st.stop()
+
+# --- INTERFAZ PRINCIPAL ---
 st.title("Dashboard de Evaluación de Sostenibilidad - Dispositivos IoT")
 
-
-if "dispositivos" not in st.session_state:
-    st.session_state.dispositivos = []
-
-# Botón para reiniciar la lista de dispositivos
+# Botón para reiniciar
 if st.button("Reiniciar"):
-    st.session_state.dispositivos = []
+    reiniciar_estado()
+    st.rerun()
 
 st.markdown("## Descripción de Métricas")
 with st.expander("Ver métricas clave del modelo"):
@@ -64,19 +275,154 @@ with col1:
         submitted = st.form_submit_button("Añadir dispositivo")
 
 with col2:
-    st.subheader("Ajuste de Peso Relativo por Métrica del Dispositivo")
-    pesos_usuario = {
-        'CE': st.slider("Peso CE", 0.0, 1.0, 0.22),
-        'HC': st.slider("Peso HC", 0.0, 1.0, 0.18),
-        'EW': st.slider("Peso EW", 0.0, 1.0, 0.12),
-        'ER': st.slider("Peso ER", 0.0, 1.0, 0.18),
-        'EE': st.slider("Peso EE", 0.0, 1.0, 0.14),
-        'DP': st.slider("Peso DP", 0.0, 1.0, 0.08),
-        'RC': st.slider("Peso RC", 0.0, 1.0, 0.05),
-        'IM': st.slider("Peso IM", 0.0, 1.0, 0.03)
-    }
+    st.subheader("Ajuste de Pesos por Métrica")
+
+    modo_pesos = st.radio(
+        "Selecciona el modo de ajuste de pesos:",
+        ("Usar pesos recomendados", "Ajustar pesos manualmente", "Calcular nuevos pesos"),
+        key="modo_pesos_radio"
+    )
+
+    if modo_pesos == "Usar pesos recomendados":
+        pesos_usuario = obtener_pesos_recomendados()
+        st.success("Se han cargado los pesos recomendados del modelo AHP+ODS.")
+
+        df_pesos = pd.DataFrame.from_dict(pesos_usuario, orient='index', columns=['Peso'])
+        df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
+        df_pesos = df_pesos.rename_axis('Métrica').reset_index()
+        st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
+
+        with st.expander("Ver explicación del modelo AHP+ODS"):
+            st.markdown("""
+            **Metodología de Cálculo de Pesos Recomendados**
+
+            Los pesos recomendados se calcularon combinando dos enfoques complementarios:
+
+            **1. Alineación con los Objetivos de Desarrollo Sostenible (ODS):**
+            - Cada métrica fue evaluada según cuántos ODS relevantes aborda
+            - Por ejemplo, el consumo de energía se alinea con el ODS 7 (energía asequible y no contaminante) y el ODS 13 (acción por el clima)
+
+            **2. Evaluación cualitativa del impacto ambiental directo:**
+            - Se asignó a cada métrica una puntuación de 1 a 5 según:
+              - Magnitud del impacto
+              - Frecuencia del impacto
+              - Alcance del impacto
+            - Por ejemplo, la huella de carbono y el consumo de energía obtienen una puntuación más alta que el mantenimiento
+
+            **Cálculo del Score Total:**
+            ```
+            Score = 1 × ODS + 2 × Impacto
+            ```
+            Donde:
+            - ODS: Número de ODS relevantes que aborda la métrica
+            - Impacto: Puntuación cualitativa del impacto ambiental (1-5)
+
+            **Aplicación del Método AHP:**
+            - Con base en estos scores, se construyó una matriz de comparación por pares entre métricas
+            - Se utilizó la escala de Saaty (1, 3, 5, 7, 9 y sus recíprocos)
+            - Esta matriz refleja qué tan importante es una métrica en relación con otra
+
+            **Resultado Final:**
+            - Se calculó un vector de pesos normalizado
+            - Todos los pesos suman 1
+            - Representa la importancia relativa de cada métrica dentro del índice de sostenibilidad ambiental
+            """)
+
+    elif modo_pesos == "Ajustar pesos manualmente":
+        st.info("Ingresa el peso de cada métrica (entre 0 y 1). La suma debe ser 1.")
+        
+        if 'pesos_guardados' not in st.session_state:
+            st.session_state.pesos_guardados = {}
+
+        with st.expander("Gestión de configuraciones personalizadas"):
+            nuevo_nombre = st.text_input("Guardar configuración como", "")
+            if st.button("Guardar configuración") and nuevo_nombre:
+                config_actual = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+                st.session_state.pesos_guardados[nuevo_nombre] = config_actual
+                st.session_state.pesos_manuales = config_actual.copy()
+                st.success(f"Configuración '{nuevo_nombre}' guardada y activada.")
+
+            if st.session_state.pesos_guardados:
+                seleccion = st.selectbox("Seleccionar configuración guardada", list(st.session_state.pesos_guardados.keys()))
+                col_config = st.columns(2)
+                if col_config[0].button("Aplicar configuración"):
+                    st.session_state.pesos_manuales = st.session_state.pesos_guardados[seleccion].copy()
+                    for k in NOMBRES_METRICAS:
+                        st.session_state[f"peso_manual_{k}"] = st.session_state.pesos_manuales[k]
+                    st.rerun()
+
+                if col_config[1].button("Eliminar configuración"):
+                    del st.session_state.pesos_guardados[seleccion]
+                    st.success(f"Configuración '{seleccion}' eliminada.")
+                    st.rerun()
+            
+            if st.button("Reiniciar configuracion"):
+                inicializar_pesos_manuales()
+                st.rerun()
+
+        pesos_usuario = {}
+        total_temporal = 0
+
+        for id, nombre_metrica in NOMBRES_METRICAS.items():
+            valor = st.number_input(
+                f"{nombre_metrica}",
+                min_value=0.0,
+                max_value=1.0,
+                step=0.01,
+                format="%.3f",
+                value=float(st.session_state[f"peso_manual_{id}"]),
+                key=f"peso_manual_{id}"
+            )
+            pesos_usuario[id] = valor
+            total_temporal += valor
+            st.session_state.pesos_manuales[id] = valor
+
+        st.metric("Suma total de pesos", f"{total_temporal:.3f}")
+
+        pesos_usuario, es_valido = validar_pesos_manuales(pesos_usuario)
+        if not es_valido:
+            st.warning("Los pesos fueron normalizados automáticamente para que sumen 1.")
+            with st.expander("Ver pesos normalizados"):
+                st.write("Los siguientes pesos normalizados serán utilizados en el cálculo:")
+                for id, valor in pesos_usuario.items():
+                    st.write(f"{NOMBRES_METRICAS[id]}: {valor:.3f}")
+                st.write(f"Suma total normalizada: {sum(pesos_usuario.values()):.3f}")
+
+    elif modo_pesos == "Calcular nuevos pesos":
+        if st.button("Editar matriz de comparación por pares"):
+            st.session_state.modo_pesos_guardado = st.session_state.modo_pesos_radio
+            st.session_state.matriz_ahp_abierta = True
+            st.rerun()
+        # Mostrar la tabla de pesos calculados si existen
+        if 'pesos_ahp' in st.session_state and bool(st.session_state.pesos_ahp):
+            st.success("Pesos calculados:")
+            pesos_dict = st.session_state.pesos_ahp
+            pesos_limpios = {}
+            for k, v in pesos_dict.items():
+                if isinstance(v, dict):
+                    val = list(v.values())[0]
+                else:
+                    val = v
+                pesos_limpios[k] = float(val)
+            metricas_list = list(pesos_limpios.keys())
+            pesos_list = [pesos_limpios[k] for k in metricas_list]
+            nombres_list = [NOMBRES_METRICAS[k] for k in metricas_list]
+            df_pesos = pd.DataFrame({
+                'Métrica': nombres_list,
+                'Peso': pesos_list
+            })
+            st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
 
 if submitted:
+    # Determinar los pesos a usar según el modo seleccionado
+    if modo_pesos == "Calcular nuevos pesos":
+        if 'pesos_ahp' in st.session_state and bool(st.session_state.pesos_ahp):
+            pesos_usuario = st.session_state.pesos_ahp
+        else:
+            st.warning("Primero debes calcular y guardar los nuevos pesos en la matriz de comparación por pares. Se usarán los pesos recomendados por defecto.")
+            pesos_usuario = obtener_pesos_recomendados()
+    # Limpiar pesos_usuario para asegurar que todos los valores sean floats
+    pesos_usuario = {k: (float(list(v.values())[0]) if isinstance(v, dict) else float(v)) for k, v in pesos_usuario.items()}
     sensor = SostenibilidadIoT(nombre)
     sensor.pesos = pesos_usuario
     sensor.calcular_consumo_energia(potencia, horas, dias)
@@ -99,27 +445,6 @@ if st.session_state.dispositivos:
 
         with col3:
             st.subheader("Gráfico de Araña")
-            def radar_chart(metricas, titulo):
-                etiquetas = {
-                    'CE': 'Cons. Energía', 'HC': 'Huella CO₂', 'EW': 'E-waste',
-                    'ER': 'Energía Renov.', 'EE': 'Eficiencia', 'DP': 'Durabilidad',
-                    'RC': 'Reciclabilidad', 'IM': 'Mantenimiento'
-                }
-                labels = [etiquetas[m] for m in metricas]
-                valores = list(metricas.values())
-                valores += valores[:1]
-                angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-                angles += angles[:1]
-
-                fig, ax = plt.subplots(figsize=(6,6), subplot_kw=dict(polar=True))
-                ax.plot(angles, valores, color='teal', linewidth=2)
-                ax.fill(angles, valores, color='skyblue', alpha=0.4)
-                ax.set_yticks([2, 4, 6, 8, 10])
-                ax.set_xticks(angles[:-1])
-                ax.set_xticklabels(labels)
-                ax.set_title(titulo, y=1.1)
-                st.pyplot(fig)
-
             radar_chart(resultado["metricas_normalizadas"], f"Métricas Normalizadas - {nombre}")
 
         with col4:
@@ -155,25 +480,4 @@ if st.button("Calcular Índice de Sostenibilidad Total"):
 
     # Mostrar el gráfico de araña para los promedios
     st.subheader("Gráfico de Araña - Promedio de Métricas")
-    def radar_chart(metricas, titulo):
-        etiquetas = {
-            'CE': 'Cons. Energía', 'HC': 'Huella CO₂', 'EW': 'E-waste',
-            'ER': 'Energía Renov.', 'EE': 'Eficiencia', 'DP': 'Durabilidad',
-            'RC': 'Reciclabilidad', 'IM': 'Mantenimiento'
-        }
-        labels = [etiquetas[m] for m in metricas]
-        valores = list(metricas.values())
-        valores += valores[:1]
-        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-        angles += angles[:1]
-
-        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-        ax.plot(angles, valores, color='teal', linewidth=2)
-        ax.fill(angles, valores, color='skyblue', alpha=0.4)
-        ax.set_yticks([2, 4, 6, 8, 10])
-        ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(labels)
-        ax.set_title(titulo, y=1.1)
-        st.pyplot(fig)
-
     radar_chart(promedio_metricas, "Promedio de Métricas Normalizadas")
