@@ -1,5 +1,5 @@
-
 import numpy as np
+from pesos import NOMBRES_METRICAS
 
 class SostenibilidadIoT:
     def __init__(self, nombre_dispositivo):
@@ -102,14 +102,3 @@ class SostenibilidadIoT:
             'metricas_normalizadas': metricas_normalizadas,
             'indice_sostenibilidad': indice_sostenibilidad
         }
-    
-    NOMBRES_METRICAS = {
-    'CE': 'Consumo de Energía',
-    'HC': 'Huella de Carbono',
-    'EW': 'E-waste',
-    'ER': 'Energía Renovable',
-    'EE': 'Eficiencia Energética',
-    'DP': 'Durabilidad',
-    'RC': 'Reciclabilidad',
-    'IM': 'Mantenimiento'
-}

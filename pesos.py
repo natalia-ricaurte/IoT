@@ -71,14 +71,6 @@ def validar_pesos_manuales(pesos_dict):
         return pesos_normalizados, False
     return pesos_dict, True
 
-# Función que retorna el texto explicativo para la interfaz de usuario
-def texto_explicacion_pesos():
-    return (
-        "Los pesos recomendados se calcularon mediante el método AHP, "
-        "combinando el número de Objetivos de Desarrollo Sostenible (ODS) "
-        "relacionados con cada métrica y una evaluación cualitativa del impacto ambiental."
-    )
-
 NOMBRES_METRICAS = {
     'CE': 'Consumo de Energía',
     'HC': 'Huella de Carbono',
