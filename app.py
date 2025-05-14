@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import json
+from streamlit_echarts import st_echarts
+
 from pesos import (
     obtener_pesos_recomendados,
     validar_pesos_manuales,
@@ -26,7 +28,7 @@ def inicializar_estado():
     
     if 'matriz_ahp_abierta' not in st.session_state:
         st.session_state.matriz_ahp_abierta = False
-    
+
     if 'pesos_manuales' not in st.session_state:
         inicializar_pesos_manuales()
     
@@ -52,26 +54,82 @@ def reiniciar_estado():
     if 'modo_pesos_guardado' in st.session_state:
         del st.session_state.modo_pesos_guardado
 
-def radar_chart(metricas, titulo):
-    etiquetas = {
-        'CE': 'Cons. Energía', 'HC': 'Huella CO₂', 'EW': 'E-waste',
-        'ER': 'Energía Renov.', 'EE': 'Eficiencia', 'DP': 'Durabilidad',
-        'RC': 'Reciclabilidad', 'IM': 'Mantenimiento'
-    }
-    labels = [etiquetas[m] for m in metricas]
-    valores = list(metricas.values())
-    valores += valores[:1]
-    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-    angles += angles[:1]
+from streamlit_echarts import st_echarts
 
-    fig, ax = plt.subplots(figsize=(6,6), subplot_kw=dict(polar=True))
-    ax.plot(angles, valores, color='teal', linewidth=2)
-    ax.fill(angles, valores, color='skyblue', alpha=0.4)
-    ax.set_yticks([2, 4, 6, 8, 10])
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels)
-    ax.set_title(titulo, y=1.1)
-    st.pyplot(fig)
+from streamlit_echarts import st_echarts
+
+def radar_chart(metricas, titulo, key):
+    etiquetas = {
+        'CE': 'Cons. Energía', 
+        'HC': 'Huella CO₂', 
+        'EW': 'E-waste',
+        'ER': 'Energía Renov.', 
+        'EE': 'Eficiencia', 
+        'DP': 'Durabilidad',
+        'RC': 'Reciclabilidad', 
+        'IM': 'Mantenimiento'
+    }
+    
+    labels = [etiquetas[m] for m in metricas.keys()]
+    valores = list(metricas.values())
+
+    options = {
+        "backgroundColor": "#111111",
+        "title": {
+            "text": titulo,
+            "left": "center",
+            "top": "5%",
+            "textStyle": {
+                "color": "#ffffff",
+                "fontSize": 20,
+            },
+        },
+        "tooltip": {
+            "trigger": "item"
+        },
+        "radar": {
+            "indicator": [{"name": label, "max": 10} for label in labels],
+            "radius": "60%",
+            "center": ["50%", "55%"],
+            "splitNumber": 5,
+            "axisLine": {
+                "lineStyle": {"color": "#3498db"}
+            },
+            "splitLine": {
+                "lineStyle": {"color": "#444444"},
+                "show": True
+            },
+            "splitArea": {
+                "areaStyle": {"color": ["#2e2e3e", "#1e1e2f"]}
+            }
+        },
+        "series": [
+            {
+                "name": titulo,
+                "type": "radar",
+                "data": [
+                    {
+                        "value": valores,
+                        "name": titulo,
+                        "itemStyle": {
+                            "color": "#3498db"
+                        },
+                        "lineStyle": {
+                            "color": "#3498db"
+                        },
+                        "areaStyle": {
+                            "color": "#3498db",
+                            "opacity": 0.3
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    # Renderizar con ECharts usando el key único
+    st_echarts(options=options, height="500px", key=key)
+
 
 def calcular_pesos_ahp(metricas):
     df_criterios = pd.DataFrame(
@@ -414,44 +472,114 @@ with col2:
             st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
 
 if submitted:
-    # Determinar los pesos a usar según el modo seleccionado
-    if modo_pesos == "Calcular nuevos pesos":
-        if 'pesos_ahp' in st.session_state and bool(st.session_state.pesos_ahp):
-            pesos_usuario = st.session_state.pesos_ahp
-        else:
-            st.warning("Primero debes calcular y guardar los nuevos pesos en la matriz de comparación por pares. Se usarán los pesos recomendados por defecto.")
-            pesos_usuario = obtener_pesos_recomendados()
-    # Limpiar pesos_usuario para asegurar que todos los valores sean floats
-    pesos_usuario = {k: (float(list(v.values())[0]) if isinstance(v, dict) else float(v)) for k, v in pesos_usuario.items()}
-    sensor = SostenibilidadIoT(nombre)
-    sensor.pesos = pesos_usuario
-    sensor.calcular_consumo_energia(potencia, horas, dias)
-    sensor.calcular_huella_carbono()
-    sensor.calcular_ewaste(peso, vida)
-    sensor.calcular_energia_renovable(energia_renovable)
-    sensor.calcular_eficiencia_energetica(funcionalidad)
-    sensor.calcular_durabilidad(vida)
-    sensor.calcular_reciclabilidad(reciclabilidad)
-    sensor.calcular_indice_mantenimiento(B, Wb, M, C, Wc, W0, W)
-    resultado = sensor.calcular_sostenibilidad()
-    st.session_state.dispositivos.append((nombre, resultado))
+    # Guardar los datos del dispositivo sin hacer cálculos ni mostrar gráficos
+    dispositivo_data = {
+        "nombre": nombre,
+        "potencia": potencia,
+        "horas": horas,
+        "dias": dias,
+        "peso": peso,
+        "vida": vida,
+        "energia_renovable": energia_renovable,
+        "funcionalidad": funcionalidad,
+        "reciclabilidad": reciclabilidad,
+        "B": B,
+        "Wb": Wb,
+        "M": M,
+        "C": C,
+        "Wc": Wc,
+        "W0": W0,
+        "W": W,
+        "calculo_realizado": False  # Control individual de cálculo
+    }
 
-if st.session_state.dispositivos:
-    st.markdown("---")
-    st.subheader("Resultados por Dispositivo")
-    for nombre, resultado in st.session_state.dispositivos:
-        st.markdown(f"### {nombre}")
-        col3, col4 = st.columns(2)
+    # Agregar el dispositivo sin mostrar resultados
+    st.session_state.dispositivos.append(dispositivo_data)
 
-        with col3:
-            st.subheader("Gráfico de Araña")
-            radar_chart(resultado["metricas_normalizadas"], f"Métricas Normalizadas - {nombre}")
+    # Mostrar mensaje de confirmación sin resultados
+    st.success(f"Dispositivo '{nombre}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
 
-        with col4:
-            st.subheader("Resultados y Recomendaciones")
+# --- BOTÓN DE REFRESH ---
+if st.button("Calcular Indice de Sostenibilidad"):
+    if not st.session_state.dispositivos:
+        st.warning("No hay dispositivos añadidos.")
+    else:
+        total_indices = []
+        metricas_totales = []
+
+        for idx, dispositivo in enumerate(st.session_state.dispositivos):
+            # Solo recalcular si no se ha calculado previamente
+            if not dispositivo.get("calculo_realizado", False):
+                sensor = SostenibilidadIoT(dispositivo["nombre"])
+
+                # Obtener los pesos
+                pesos_usuario = st.session_state.pesos_ahp if "pesos_ahp" in st.session_state else obtener_pesos_recomendados()
+                sensor.pesos = {k: float(v) for k, v in pesos_usuario.items()}
+
+                # Calcular métricas
+                sensor.calcular_consumo_energia(dispositivo["potencia"], dispositivo["horas"], dispositivo["dias"])
+                sensor.calcular_huella_carbono()
+                sensor.calcular_ewaste(dispositivo["peso"], dispositivo["vida"])
+                sensor.calcular_energia_renovable(dispositivo["energia_renovable"])
+                sensor.calcular_eficiencia_energetica(dispositivo["funcionalidad"])
+                sensor.calcular_durabilidad(dispositivo["vida"])
+                sensor.calcular_reciclabilidad(dispositivo["reciclabilidad"])
+                sensor.calcular_indice_mantenimiento(
+                    dispositivo["B"], dispositivo["Wb"], dispositivo["M"], 
+                    dispositivo["C"], dispositivo["Wc"], dispositivo["W0"], dispositivo["W"]
+                )
+
+                # Calcular el índice de sostenibilidad
+                resultado = sensor.calcular_sostenibilidad()
+                dispositivo["resultado"] = resultado
+                dispositivo["calculo_realizado"] = True
+
+            # Actualizar listas para el cálculo global
+            total_indices.append(dispositivo["resultado"]["indice_sostenibilidad"])
+            metricas_totales.append(dispositivo["resultado"]["metricas_normalizadas"])
+
+        # Cálculo del índice global
+        promedio_total = sum(total_indices) / len(total_indices)
+
+        # Calcular promedio de métricas
+        promedio_metricas = {
+            key: sum(m[key] for m in metricas_totales) / len(metricas_totales)
+            for key in metricas_totales[0]
+        }
+
+        # Guardar el resultado global
+        st.session_state.resultado_global = {
+            "promedio_total": promedio_total,
+            "promedio_metricas": promedio_metricas
+        }
+
+        st.success("Resultados actualizados correctamente.")
+
+# --- FUNCIÓN PARA MOSTRAR RESULTADOS DE UN DISPOSITIVO ---
+def mostrar_dispositivo(dispositivo, idx):
+    """Muestra el gráfico y las recomendaciones del dispositivo."""
+    if dispositivo.get("calculo_realizado", False) and "resultado" in dispositivo:
+        resultado = dispositivo["resultado"]
+        nombre = dispositivo["nombre"]
+
+        # Crear columnas para organizar la disposición
+        col1, col2 = st.columns([2, 1])
+
+        # Gráfico a la izquierda
+        with col1:
+            st.markdown(f"### {nombre}")
+            radar_chart(
+                resultado["metricas_normalizadas"], 
+                f"Métricas Normalizadas - {nombre}",
+                key=f"radar_{idx}"
+            )
+
+        # Recomendaciones a la derecha
+        with col2:
             st.metric("Índice de Sostenibilidad", f"{resultado['indice_sostenibilidad']:.2f}/10")
             st.markdown("### Recomendaciones")
             recomendaciones = []
+
             if resultado['metricas_normalizadas']['ER'] < 5:
                 recomendaciones.append("Aumentar uso de energía renovable.")
             if resultado['metricas_normalizadas']['DP'] < 5:
@@ -461,23 +589,61 @@ if st.session_state.dispositivos:
             if resultado['metricas_normalizadas']['EE'] < 5:
                 recomendaciones.append("Mejorar eficiencia energética.")
             if resultado['indice_sostenibilidad'] < 6:
-                recomendaciones.append("Índice global bajo: revisar métricas críticas.")
+                recomendaciones.append("Revisar métricas críticas para mejorar el índice global.")
 
-            for r in recomendaciones:
-                st.info(r)
-                
-# Botón para calcular el índice de sostenibilidad total y mostrar el gráfico de araña
-if st.button("Calcular Índice de Sostenibilidad Total"):
-    total_indices = [resultado['indice_sostenibilidad'] for _, resultado in st.session_state.dispositivos]
-    promedio_total = sum(total_indices) / len(total_indices)
+            for rec_idx, rec in enumerate(recomendaciones):
+                st.button(rec, disabled=True, key=f"rec_{idx}_{rec_idx}")
 
-    # Calcular los promedios de las métricas normalizadas
-    metricas_totales = [resultado["metricas_normalizadas"] for _, resultado in st.session_state.dispositivos]
-    promedio_metricas = {key: sum(d[key] for d in metricas_totales) / len(metricas_totales) for key in metricas_totales[0]}
+# --- MOSTRAR RESULTADOS INDIVIDUALES ---
+if st.session_state.dispositivos:
+    st.markdown("---")
+    st.subheader("Resultados por Dispositivo")
 
-    # Mostrar el índice total
-    st.success(f"El Índice de Sostenibilidad Total es: {promedio_total:.2f}/10")
+    dispositivos = st.session_state.dispositivos
+    num_dispositivos = len(dispositivos)
 
-    # Mostrar el gráfico de araña para los promedios
-    st.subheader("Gráfico de Araña - Promedio de Métricas")
-    radar_chart(promedio_metricas, "Promedio de Métricas Normalizadas")
+    for i in range(0, num_dispositivos, 2):
+        col1, col2 = st.columns(2)
+
+        # Mostrar dispositivo en la primera columna
+        with col1:
+            mostrar_dispositivo(dispositivos[i], i)
+
+        # Mostrar dispositivo en la segunda columna, si existe
+        if i + 1 < num_dispositivos:
+            with col2:
+                mostrar_dispositivo(dispositivos[i + 1], i + 1)
+
+# --- MOSTRAR RESULTADOS GLOBALES ---
+if "resultado_global" in st.session_state:
+    resultado_global = st.session_state.resultado_global
+    promedio_total = resultado_global["promedio_total"]
+    promedio_metricas = resultado_global["promedio_metricas"]
+
+    st.markdown("---")
+    st.success(f"Índice de Sostenibilidad Global: {promedio_total:.2f}/10")
+
+    col1, col2 = st.columns([2, 1])
+
+    # Gráfico del promedio a la izquierda
+    with col1:
+        radar_chart(promedio_metricas, "Promedio de Métricas Normalizadas", key="radar_total")
+
+    # Recomendaciones globales a la derecha
+    with col2:
+        st.markdown("### Recomendaciones Globales")
+        recomendaciones_globales = []
+
+        if promedio_metricas["ER"] < 5:
+            recomendaciones_globales.append("Aumentar uso de energía renovable.")
+        if promedio_metricas["DP"] < 5:
+            recomendaciones_globales.append("Incrementar durabilidad del hardware.")
+        if promedio_metricas["IM"] < 5:
+            recomendaciones_globales.append("Reducir impacto de mantenimiento.")
+        if promedio_metricas["EE"] < 5:
+            recomendaciones_globales.append("Mejorar eficiencia energética.")
+        if promedio_total < 6:
+            recomendaciones_globales.append("Revisar métricas críticas para mejorar el índice global.")
+
+        for rec_idx, rec in enumerate(recomendaciones_globales):
+            st.button(rec, disabled=True, key=f"global_rec_{rec_idx}")
