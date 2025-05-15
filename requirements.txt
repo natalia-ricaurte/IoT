@@ -1,6 +1,6 @@
-streamlit
-numpy
-matplotlib
-pandas
-pip 
-streamlit-echarts
+streamlit==1.32.0
+numpy==1.26.4
+pandas==2.2.1
+matplotlib==3.8.3
+Pillow==10.2.0
+streamlit-echarts==0.4.0

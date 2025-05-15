@@ -50,7 +50,7 @@ def reiniciar_estado():
     n = len(metricas)
     st.session_state.matriz_comparacion = np.ones((n, n))
     # Reiniciar el modo de pesos al estado inicial
-    st.session_state.modo_pesos_radio = "Usar pesos recomendados"
+    st.session_state.modo_pesos_radio = "Pesos Recomendados"
     if 'modo_pesos_guardado' in st.session_state:
         del st.session_state.modo_pesos_guardado
 
@@ -142,58 +142,89 @@ def calcular_pesos_ahp(metricas):
     return pesos, ic, rc
 
 def mostrar_resultados_ahp(pesos, rc):
-    """Muestra los resultados del cálculo AHP."""
-    st.success("Pesos calculados:")
+    """Muestra los resultados del cálculo de pesos por Matriz de Comparación por Pares."""
+    st.success("Pesos calculados mediante Matriz de Comparación por Pares:")
     # Convertir los pesos a un formato limpio
     pesos_limpios = {}
     for k, v in pesos.items():
         if isinstance(v, dict):
             val = list(v.values())[0]
+        elif isinstance(v, pd.Series):
+            val = v.iloc[0]
         else:
             val = v
         pesos_limpios[k] = float(val)
-    
     # Crear DataFrame con los pesos
     metricas_list = list(pesos_limpios.keys())
     pesos_list = [pesos_limpios[k] for k in metricas_list]
     nombres_list = [NOMBRES_METRICAS[k] for k in metricas_list]
-    
     df_pesos = pd.DataFrame({
         'Métrica': nombres_list,
         'Peso': pesos_list
     })
+    # Agregar columna de importancia relativa con criterios equilibrados
+    df_pesos['Importancia'] = df_pesos['Peso'].apply(
+        lambda x: '🔴 Alta' if x >= 0.20 else '🟡 Media' if 0.10 < x < 0.20 else '🟢 Baja'
+    )
     st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
-    
+    # Mostrar razón de consistencia y advertencias
     if rc < 0.1:
-        st.success(f"Razón de Consistencia: {rc:.3f} (La matriz es consistente)")
+        st.success(f"✅ Razón de Consistencia: {rc:.3f} (La matriz es consistente)")
     else:
-        st.warning(f"Razón de Consistencia: {rc:.3f} (La matriz NO es consistente)")
+        st.warning(f"⚠️ Razón de Consistencia: {rc:.3f} (La matriz NO es consistente)")
+        st.info("""
+        **Sugerencias para mejorar la consistencia:**
+        1. Revise las comparaciones más extremas
+        2. Asegúrese de que sus comparaciones sean transitivas
+        3. Si A > B y B > C, entonces A debería ser más importante que C
+        """)
 
 def mostrar_matriz_ahp():
-    st.title("Matriz de Comparación por Pares (AHP)")
+    st.title("Matriz de Comparación por Pares")
+    with st.expander("ℹ️ Guía de la Matriz de Comparación por Pares"):
+        st.markdown("""
+        ### Guía de la Matriz de Comparación por Pares
+        
+        Esta matriz le permite comparar la importancia relativa de cada par de métricas utilizando la escala de Saaty.
+        
+        **Escala de Comparación:**
+        - 1: Las métricas son igualmente importantes
+        - 3: La métrica de la fila es moderadamente más importante
+        - 5: La métrica de la fila es fuertemente más importante
+        - 7: La métrica de la fila es muy fuertemente más importante
+        - 9: La métrica de la fila es extremadamente más importante
+        
+        **Valores Decimales (Recíprocos):**
+        Cuando una métrica es menos importante, use los siguientes valores decimales:
+        | Comparación | Valor Decimal |
+        |-------------|---------------|
+        | 1/2         | 0.50         |
+        | 1/3         | 0.33         |
+        | 1/4         | 0.25         |
+        | 1/5         | 0.20         |
+        | 1/6         | 0.17         |
+        | 1/7         | 0.14         |
+        | 1/8         | 0.13         |
+        | 1/9         | 0.11         |
+        
+        **Ejemplos:**
+        - Si el Consumo de Energía es moderadamente más importante que la Huella de Carbono, ingrese 3
+        - Si la Huella de Carbono es fuertemente más importante que el E-waste, ingrese 5
+        - Si el E-waste es moderadamente menos importante que la Huella de Carbono, ingrese 0.33 (equivalente a 1/3)
+        
+        **Consejo:** Comience comparando las métricas más importantes entre sí.
+        """)
     st.info("Edita solo la mitad superior de la tabla. El resto se calcula automáticamente.")
-    st.markdown("""
-    **Escala de Saaty:**
-    - 1: Igual importancia
-    - 3: Moderadamente más importante
-    - 5: Fuertemente más importante
-    - 7: Muy fuertemente más importante
-    - 9: Extremadamente más importante
-    - Valores intermedios (2,4,6,8) cuando sea necesario
-    - Si la métrica de la fila es MENOS importante que la de la columna, usa el recíproco (por ejemplo, 1/3, 1/5, etc.)
-    """)
     metricas = list(NOMBRES_METRICAS.keys())
     nombres = [NOMBRES_METRICAS[m] for m in metricas]
     n = len(metricas)
     if 'matriz_comparacion' not in st.session_state:
         st.session_state.matriz_comparacion = np.ones((n, n))
-    
     # Encabezados de columna
     cols = st.columns(n+1)
     cols[0].write("")
     for j in range(n):
         cols[j+1].markdown(f"**{nombres[j]}**")
-    
     # Filas de la matriz
     for i in range(n):
         row = st.columns(n+1)
@@ -216,9 +247,7 @@ def mostrar_matriz_ahp():
                 st.session_state.matriz_comparacion[j, i] = 1/valor
             else:
                 row[j+1].write(f"{st.session_state.matriz_comparacion[i, j]:.2f}")
-
     st.markdown("---")
-    
     # Botones de acción
     col_calc, col_save, col_space, col_cancel, col_reset = st.columns([1, 1, 2, 1, 1])
     with col_calc:
@@ -235,7 +264,7 @@ def mostrar_matriz_ahp():
                 'ic': ic,
                 'rc': rc
             }
-            st.rerun()  # Forzar recarga para mostrar solo una vez
+            st.rerun()
     with col_save:
         if st.button("Guardar y salir"):
             if 'ahp_resultados' in st.session_state:
@@ -260,7 +289,6 @@ def mostrar_matriz_ahp():
             if 'ahp_resultados' in st.session_state:
                 del st.session_state.ahp_resultados
             st.rerun()
-
     # Mostrar resultados si existen
     if st.session_state.get('ahp_resultados'):
         mostrar_resultados_ahp(st.session_state.ahp_resultados['pesos'], st.session_state.ahp_resultados['rc'])
@@ -335,19 +363,46 @@ with col1:
 with col2:
     st.subheader("Ajuste de Pesos por Métrica")
 
+    with st.expander("Información sobre los métodos de asignación de pesos"):
+        st.markdown("""
+        ### Método de Asignación de Pesos
+        El sistema ofrece tres formas de asignar pesos a las métricas:
+
+        1. **Pesos Recomendados**: 
+           - Basados en análisis y alineación con ODS
+           - Ideal para usuarios que buscan una evaluación estándar
+           - No requiere configuración adicional
+
+        2. **Ajuste Manual**:
+           - Permite personalizar los pesos según necesidades específicas
+           - Útil cuando se tiene conocimiento experto del dominio
+           - Los pesos deben sumar 1.0
+
+        3. **Calcular nuevos pesos**:
+           - Utiliza la Matriz de Comparación por Pares
+           - Requiere evaluar la importancia relativa entre métricas
+           - Incluye verificación de consistencia
+        """)
+
     modo_pesos = st.radio(
-        "Selecciona el modo de ajuste de pesos:",
-        ("Usar pesos recomendados", "Ajustar pesos manualmente", "Calcular nuevos pesos"),
+        "Selecciona el método de asignación de pesos:",
+        ("Pesos Recomendados", "Ajuste Manual", "Calcular nuevos pesos"),
         key="modo_pesos_radio"
     )
 
-    if modo_pesos == "Usar pesos recomendados":
+    if modo_pesos == "Pesos Recomendados":
         pesos_usuario = obtener_pesos_recomendados()
         st.success("Se han cargado los pesos recomendados del modelo AHP+ODS.")
 
         df_pesos = pd.DataFrame.from_dict(pesos_usuario, orient='index', columns=['Peso'])
         df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
         df_pesos = df_pesos.rename_axis('Métrica').reset_index()
+        
+        # Agregar columna de importancia relativa
+        df_pesos['Importancia'] = df_pesos['Peso'].apply(
+            lambda x: '🔴 Alta' if x >= 0.20 else '🟡 Media' if 0.10 < x < 0.20 else '🟢 Baja'
+        )
+        
         st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
 
         with st.expander("Ver explicación del modelo AHP+ODS"):
@@ -386,8 +441,14 @@ with col2:
             - Representa la importancia relativa de cada métrica dentro del índice de sostenibilidad ambiental
             """)
 
-    elif modo_pesos == "Ajustar pesos manualmente":
-        st.info("Ingresa el peso de cada métrica (entre 0 y 1). La suma debe ser 1.")
+    elif modo_pesos == "Ajuste Manual":
+        st.info("""
+        **Instrucciones para el Ajuste Manual:**
+        - Asigne un peso entre 0 y 1 a cada métrica
+        - La suma total debe ser 1.0
+        - Los pesos más altos indican mayor importancia
+        - El sistema normalizará automáticamente si la suma no es 1.0
+        """)
         
         if 'pesos_guardados' not in st.session_state:
             st.session_state.pesos_guardados = {}
@@ -414,7 +475,7 @@ with col2:
                     st.success(f"Configuración '{seleccion}' eliminada.")
                     st.rerun()
             
-            if st.button("Reiniciar configuracion"):
+            if st.button("Reiniciar configuración"):
                 inicializar_pesos_manuales()
                 st.rerun()
 
@@ -447,29 +508,18 @@ with col2:
                 st.write(f"Suma total normalizada: {sum(pesos_usuario.values()):.3f}")
 
     elif modo_pesos == "Calcular nuevos pesos":
+        st.info("""
+        **Matriz de Comparación por Pares:**
+        - Este método le permite comparar la importancia relativa de cada par de métricas
+        - Se utiliza la escala de Saaty para las comparaciones
+        - El sistema verificará la consistencia de sus comparaciones
+        - Se recomienda comenzar comparando las métricas más importantes entre sí
+        """)
+        
         if st.button("Editar matriz de comparación por pares"):
             st.session_state.modo_pesos_guardado = st.session_state.modo_pesos_radio
             st.session_state.matriz_ahp_abierta = True
             st.rerun()
-        # Mostrar la tabla de pesos calculados si existen
-        if 'pesos_ahp' in st.session_state and bool(st.session_state.pesos_ahp):
-            st.success("Pesos calculados:")
-            pesos_dict = st.session_state.pesos_ahp
-            pesos_limpios = {}
-            for k, v in pesos_dict.items():
-                if isinstance(v, dict):
-                    val = list(v.values())[0]
-                else:
-                    val = v
-                pesos_limpios[k] = float(val)
-            metricas_list = list(pesos_limpios.keys())
-            pesos_list = [pesos_limpios[k] for k in metricas_list]
-            nombres_list = [NOMBRES_METRICAS[k] for k in metricas_list]
-            df_pesos = pd.DataFrame({
-                'Métrica': nombres_list,
-                'Peso': pesos_list
-            })
-            st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
 
 if submitted:
     # Guardar los datos del dispositivo sin hacer cálculos ni mostrar gráficos
@@ -514,7 +564,7 @@ if st.button("Calcular Indice de Sostenibilidad"):
 
                 # Obtener los pesos
                 pesos_usuario = st.session_state.pesos_ahp if "pesos_ahp" in st.session_state else obtener_pesos_recomendados()
-                sensor.pesos = {k: float(v) for k, v in pesos_usuario.items()}
+                sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_usuario.items()}
 
                 # Calcular métricas
                 sensor.calcular_consumo_energia(dispositivo["potencia"], dispositivo["horas"], dispositivo["dias"])
