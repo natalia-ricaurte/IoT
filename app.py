@@ -347,6 +347,15 @@ with st.expander("Guía rápida de uso del dashboard"):
    - Pulsa 'Calcular Índice de Sostenibilidad' para ver los resultados individuales y globales.
 
 > **Consejo:** Si necesitas calcular nuevos pesos personalizados, hazlo antes de ingresar los datos de los dispositivos para evitar perder el progreso del formulario.
+
+---
+
+**Nota sobre los pesos:**
+- Puedes modificar los pesos de las métricas antes de añadir cada dispositivo. Los pesos que estén activos en ese momento serán los que se usen para calcular el índice de sostenibilidad de ese dispositivo.
+- Si cambias los pesos y luego calculas el índice global, se usará el conjunto de pesos que esté activo en ese momento para el cálculo global.
+- Esto te permite comparar dispositivos bajo diferentes criterios, pero recuerda que los índices individuales pueden no ser directamente comparables si usaste pesos distintos.
+
+> **Consejo:** Utiliza la misma configuración de pesos para todos los dispositivos para que los índices sean comparables y el calculo global sea acertado.
     """)
 
 # Definir claves y valores por defecto para el formulario
@@ -573,7 +582,21 @@ with col2:
             mostrar_resultados_ahp(st.session_state.pesos_ahp, st.session_state.ahp_resultados['rc'] if 'ahp_resultados' in st.session_state else None)
 
 if submitted:
-    # Guardar los datos del dispositivo sin hacer cálculos ni mostrar gráficos
+    # Obtener los pesos activos en este momento
+    pesos_usuario = st.session_state.pesos_ahp if "pesos_ahp" in st.session_state else obtener_pesos_recomendados()
+    # Calcular el índice de sostenibilidad usando estos pesos
+    sensor = SostenibilidadIoT(nombre)
+    sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_usuario.items()}
+    sensor.calcular_consumo_energia(potencia, horas, dias)
+    sensor.calcular_huella_carbono()
+    sensor.calcular_ewaste(peso, vida)
+    sensor.calcular_energia_renovable(energia_renovable)
+    sensor.calcular_eficiencia_energetica(funcionalidad)
+    sensor.calcular_durabilidad(vida)
+    sensor.calcular_reciclabilidad(reciclabilidad)
+    sensor.calcular_indice_mantenimiento(B, Wb, M, C, Wc, W0, W)
+    resultado = sensor.calcular_sostenibilidad()
+
     dispositivo_data = {
         "nombre": nombre,
         "potencia": potencia,
@@ -591,15 +614,12 @@ if submitted:
         "Wc": Wc,
         "W0": W0,
         "W": W,
-        "calculo_realizado": False  # Control individual de cálculo
+        "calculo_realizado": True,
+        "pesos_utilizados": pesos_usuario,
+        "resultado": resultado
     }
 
-    # Agregar el dispositivo sin mostrar resultados
     st.session_state.dispositivos.append(dispositivo_data)
-
-    # Limpiar el formulario tras añadir
-    for k, (default, _) in form_keys.items():
-        st.session_state[f"form_{k}"] = default
 
     # Mostrar mensaje de confirmación sin resultados
     st.success(f"Dispositivo '{nombre}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
