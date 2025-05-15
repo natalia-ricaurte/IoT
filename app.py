@@ -10,6 +10,16 @@ from openpyxl.chart import RadarChart, Reference
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
+# --- Función auxiliar para comparar pesos ---
+def to_dict_flat(p):
+    if hasattr(p, 'to_dict'):
+        return p.to_dict()
+    if isinstance(p, pd.Series):
+        return p.to_dict()
+    if isinstance(p, dict):
+        return p
+    return dict(p)
+
 from pesos import (
     obtener_pesos_recomendados,
     validar_pesos_manuales,
@@ -24,9 +34,9 @@ def inicializar_pesos_manuales():
     if 'pesos_manuales' not in st.session_state:
         pesos_recomendados = obtener_pesos_recomendados()
         st.session_state.pesos_manuales = pesos_recomendados.copy()
-        for id in NOMBRES_METRICAS:
-            if f"peso_manual_{id}" not in st.session_state:
-                st.session_state[f"peso_manual_{id}"] = float(pesos_recomendados[id])
+    for id in NOMBRES_METRICAS:
+        if f"peso_manual_{id}" not in st.session_state:
+            st.session_state[f"peso_manual_{id}"] = float(pesos_recomendados[id])
 
 def inicializar_estado():
     """Inicializa todas las variables de estado necesarias."""
@@ -47,7 +57,7 @@ def inicializar_estado():
         n = len(metricas)
         st.session_state.matriz_comparacion = np.ones((n, n))
 
-    # Solo inicializar modo_pesos_radio si no está en modo edición
+    # Inicializar modo_pesos_radio si no está en modo edición
     if 'modo_pesos_radio' not in st.session_state and not st.session_state.get('modo_edicion', False):
         st.session_state.modo_pesos_radio = "Pesos Recomendados"
 
@@ -157,14 +167,7 @@ def calcular_pesos_ahp(metricas):
 
 def mostrar_resultados_ahp(pesos, rc):
     """Muestra los resultados del cálculo de pesos por Matriz de Comparación por Pares."""
-    # Obtener nombre de la configuración
-    nombre_config = "Pesos Calculados"  # valor por defecto
-    for nombre, config in st.session_state.configuraciones_ahp.items():
-        if config['pesos'] == pesos:
-            nombre_config = f"Configuración Calculada: {nombre}"
-            break
-    
-    st.success(f"Pesos calculados mediante la Matriz de Comparación por Pares ({nombre_config}):")
+    st.success("Pesos calculados mediante la Matriz de Comparación por Pares:")
     # Convertir los pesos a un formato limpio
     pesos_limpios = {}
     for k, v in pesos.items():
@@ -350,17 +353,17 @@ def exportar_resultados_excel():
     if st.session_state.modo_pesos_radio == "Calcular nuevos pesos" and 'pesos_ahp' in st.session_state:
         nombre_config = "Pesos Calculados"
         pesos_global = st.session_state.pesos_ahp
-        for nombre, config in st.session_state.configuraciones_ahp.items():
-            if config['pesos'] == st.session_state.pesos_ahp:
-                nombre_config = f"Configuración Calculada: {nombre}"
+        for nombre_config, config in st.session_state.configuraciones_ahp.items():
+            if to_dict_flat(config['pesos']) == to_dict_flat(pesos_global):
+                nombre_config = f"Configuración Calculada: {nombre_config}"
                 break
     elif st.session_state.modo_pesos_radio == "Ajuste Manual":
         nombre_config = "Pesos Manuales Personalizados"
         pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
         pesos_global, _ = validar_pesos_manuales(pesos_manuales)
-        for nombre, config in st.session_state.pesos_guardados.items():
-            if config == pesos_global:
-                nombre_config = f"Configuración Manual: {nombre}"
+        for nombre_config, config in st.session_state.pesos_guardados.items():
+            if to_dict_flat(config) == to_dict_flat(pesos_global):
+                nombre_config = f"Configuración Manual: {nombre_config}"
                 break
     else:
         nombre_config = "Pesos Recomendados"
@@ -441,18 +444,23 @@ def exportar_resultados_excel():
         nombre_config_disp = "Pesos Recomendados"
         modo_disp = dispositivo.get('snapshot_pesos', {}).get('modo', None)
         if modo_disp == "Ajuste Manual":
-            for nombre, config in st.session_state.pesos_guardados.items():
-                pesos_limpios = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_disp.items()}
-                if config == pesos_limpios:
-                    nombre_config_disp = f"Configuración Manual: {nombre}"
-                    break
+            pesos_limpios = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_disp.items()}
+            pesos_recomendados = obtener_pesos_recomendados()
+            if to_dict_flat(pesos_limpios) == to_dict_flat(pesos_recomendados):
+                nombre_config_disp = "Pesos Recomendados"
             else:
-                nombre_config_disp = "Pesos Manuales Personalizados"
+                nombre_config_default = "Pesos Manuales Personalizados"  # valor por defecto
+                nombre_config_encontrada = None
+                for nombre, config in st.session_state.pesos_guardados.items():
+                    if to_dict_flat(config) == to_dict_flat(pesos_limpios):
+                        nombre_config_encontrada = f"Configuración Manual: {nombre}"
+                        break
+                nombre_config_disp = nombre_config_encontrada if nombre_config_encontrada else nombre_config_default
         elif modo_disp == "Calcular nuevos pesos":
-            for nombre, config in st.session_state.configuraciones_ahp.items():
-                pesos_limpios = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_disp.items()}
-                if config['pesos'] == pesos_limpios:
-                    nombre_config_disp = f"Configuración Calculada: {nombre}"
+            pesos_limpios = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_disp.items()}
+            for nombre_config, config in st.session_state.configuraciones_ahp.items():
+                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_limpios):
+                    nombre_config_disp = f"Configuración Calculada: {nombre_config}"
                     break
             else:
                 nombre_config_disp = "Pesos Calculados"
@@ -561,7 +569,7 @@ with st.expander("Guía rápida de uso del dashboard"):
    - **Pesos Recomendados:** Basados en análisis y alineación con ODS.
    - **Ajuste Manual:** Permite personalizar los pesos y guardar configuraciones personalizadas.
    - **Pesos Calculados:** Utiliza la matriz de comparación por pares y permite guardar diferentes configuraciones.
-   - **Nota:** Los pesos activos al momento de añadir un dispositivo serán los que se usen para su cálculo.
+   - **Nota:** Los pesos activos al momento de añadir un dispositivo serán los que se usen para su cálculo. El nombre de la configuración utilizada se guarda y se muestra en los resultados y exportaciones.
 
 2. **Ingresa las características de tus dispositivos IoT**
    - Completa el formulario y pulsa **'Añadir dispositivo'** para guardar cada uno.
@@ -569,7 +577,7 @@ with st.expander("Guía rápida de uso del dashboard"):
 
 3. **Gestiona tu lista de dispositivos**
    - Puedes ver los detalles completos de cada dispositivo pulsando **'Mostrar detalles'**.
-   - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo.
+   - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo, junto con el nombre de la configuración de pesos aplicada.
    - Para eliminar un dispositivo, marca la casilla **'Eliminar dispositivo'** y confirma la acción con el botón correspondiente. Al eliminar cualquier dispositivo, los resultados globales se eliminan y deberás recalcular.
 
 4. **Calcula y analiza los resultados**
@@ -582,8 +590,16 @@ with st.expander("Guía rápida de uso del dashboard"):
      - Desviación estándar de los índices individuales.
      - Fecha y hora del cálculo global.
      - Nota sobre comparabilidad si los dispositivos fueron evaluados con diferentes pesos.
-     - Pesos utilizados para el cálculo global.
+     - Pesos utilizados para el cálculo global y nombre de la configuración aplicada.
      - Lista de dispositivos incluidos y su índice individual.
+
+6. **Exporta los resultados completos a Excel**
+   - Tras calcular el índice global, utiliza el botón **'Descargar Resultados Completos'** para exportar toda la información a un archivo Excel profesional.
+   - El archivo incluye:
+     - Resumen general con índice global, fecha, configuración de pesos y gráfico radar.
+     - Tabla de pesos utilizados para el cálculo global.
+     - Lista de dispositivos y sus índices.
+     - Hojas de detalle para cada dispositivo, con datos de entrada, nombre de la configuración de pesos utilizada, tabla de pesos y gráfico radar individual.
 
 ---
 
@@ -592,6 +608,7 @@ with st.expander("Guía rápida de uso del dashboard"):
 - Si los dispositivos fueron evaluados con diferentes configuraciones de pesos, los índices individuales pueden no ser directamente comparables.
 - El dashboard elimina automáticamente los resultados globales al añadir o eliminar dispositivos para evitar mostrar información desactualizada.
 - Puedes guardar y cargar diferentes configuraciones de pesos tanto para el ajuste manual como para los pesos calculados mediante comparación por pares.
+- El nombre de la configuración de pesos utilizada se guarda y se muestra en todos los resultados y exportaciones para máxima trazabilidad.
 """)
 
 # Definir claves y valores por defecto para el formulario
@@ -742,63 +759,64 @@ with col2:
         - Los pesos más altos indican mayor importancia
         - El sistema normalizará automáticamente si la suma no es 1.0
         """)
-        
-        if 'pesos_guardados' not in st.session_state:
-            st.session_state.pesos_guardados = {}
-
-        # Mostrar configuración activa
-        pesos_actuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
-        nombre_config = "Pesos Manuales Personalizados"  # valor por defecto
-        for nombre, config in st.session_state.pesos_guardados.items():
-            if config == pesos_actuales:
-                nombre_config = f"Configuración Manual: {nombre}"
-                break
-        st.success(f"**Configuración activa:** {nombre_config}")
 
         with st.expander("Gestión de configuraciones personalizadas"):
             nuevo_nombre = st.text_input("Guardar configuración como", "")
-            if st.button("Guardar configuración") and nuevo_nombre:
-                config_actual = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+            guardar = st.button("Guardar configuración")
+            if guardar and nuevo_nombre:
+                config_actual = {k: float(st.session_state[f"peso_manual_{k}"]) for k in NOMBRES_METRICAS}
+                if 'pesos_guardados' not in st.session_state:
+                    st.session_state.pesos_guardados = {}
                 st.session_state.pesos_guardados[nuevo_nombre] = config_actual
-                st.session_state.pesos_manuales = config_actual.copy()
-                st.success(f"Configuración '{nuevo_nombre}' guardada y activada.")
-
-            if st.session_state.pesos_guardados:
+                st.success(f"Configuración '{nuevo_nombre}' guardada correctamente.")
+                st.rerun()
+            # Mostrar selectbox y botones para aplicar/eliminar si hay configuraciones guardadas
+            if st.session_state.get('pesos_guardados'):
                 seleccion = st.selectbox("Seleccionar configuración guardada", list(st.session_state.pesos_guardados.keys()))
                 col_config = st.columns(2)
                 if col_config[0].button("Aplicar configuración"):
                     st.session_state.pesos_manuales = st.session_state.pesos_guardados[seleccion].copy()
                     for k in NOMBRES_METRICAS:
                         st.session_state[f"peso_manual_{k}"] = st.session_state.pesos_manuales[k]
+                    st.success(f"Configuración '{seleccion}' aplicada correctamente.")
                     st.rerun()
-
                 if col_config[1].button("Eliminar configuración"):
                     del st.session_state.pesos_guardados[seleccion]
-                    st.success(f"Configuración '{seleccion}' eliminada.")
+                    st.success(f"Configuración '{seleccion}' eliminada correctamente.")
                     st.rerun()
-            
             if st.button("Reiniciar configuración"):
                 inicializar_pesos_manuales()
                 st.rerun()
 
-        pesos_usuario = {}
-        total_temporal = 0
+        # Mensaje de configuración activa antes de los inputs manuales
+        pesos_actuales = {k: st.session_state.get(f"peso_manual_{k}", 0) for k in NOMBRES_METRICAS}
+        pesos_recomendados = obtener_pesos_recomendados()
+        if to_dict_flat(pesos_actuales) == to_dict_flat(pesos_recomendados):
+            st.success("**Configuración activa: Pesos Recomendados**")
+        else:
+            st.success("**Configuración activa: Pesos Manuales Personalizados**")
 
+        pesos_usuario = {}
         for id, nombre_metrica in NOMBRES_METRICAS.items():
+            valor_default = float(st.session_state.get(f"peso_manual_{id}", obtener_pesos_recomendados()[id]))
             valor = st.number_input(
                 f"{nombre_metrica}",
                 min_value=0.0,
                 max_value=1.0,
                 step=0.01,
                 format="%.3f",
-                value=float(st.session_state[f"peso_manual_{id}"]),
+                value=valor_default,
                 key=f"peso_manual_{id}"
             )
-            pesos_usuario[id] = valor
-            total_temporal += valor
-            st.session_state.pesos_manuales[id] = valor
-
+            pesos_usuario[id] = float(valor)
+        # Asegurar que todas las métricas están presentes
+        for id in NOMBRES_METRICAS:
+            if id not in pesos_usuario:
+                pesos_usuario[id] = float(st.session_state.get(f"peso_manual_{id}", obtener_pesos_recomendados()[id]))
+        total_temporal = sum(pesos_usuario.values())
         st.metric("Suma total de pesos", f"{total_temporal:.3f}")
+        # No actualizar session_state.pesos_manuales aquí
+        # Solo usar pesos_usuario para validación y visualización
 
         pesos_usuario, es_valido = validar_pesos_manuales(pesos_usuario)
         if not es_valido:
@@ -817,30 +835,48 @@ with col2:
         - El sistema verificará la consistencia de sus comparaciones
         - Se recomienda comenzar comparando las métricas más importantes entre sí
         """)
-        
         # Mostrar configuración activa si hay pesos calculados
         if 'pesos_ahp' in st.session_state and st.session_state.pesos_ahp is not None:
             nombre_config = "Pesos Calculados"  # valor por defecto
-            for nombre, config in st.session_state.configuraciones_ahp.items():
-                if config['pesos'] == st.session_state.pesos_ahp:
-                    nombre_config = f"Configuración Calculada: {nombre}"
+            for nombre_config, config in st.session_state.configuraciones_ahp.items():
+                if to_dict_flat(config['pesos']) == to_dict_flat(st.session_state.pesos_ahp):
+                    nombre_config = f"Configuración Calculada: {nombre_config}"
                     break
             st.success(f"**Configuración activa:** {nombre_config}")
-        
         if st.button("Editar matriz de comparación por pares"):
             st.session_state.modo_pesos_guardado = st.session_state.modo_pesos_radio
             st.session_state.matriz_ahp_abierta = True
             st.rerun()
-
         # Mostrar la tabla resumen de pesos calculados si existen
         if 'pesos_ahp' in st.session_state and st.session_state.pesos_ahp is not None:
-            mostrar_resultados_ahp(st.session_state.pesos_ahp, st.session_state.ahp_resultados['rc'] if 'ahp_resultados' in st.session_state else None)
-
+            # Mostrar solo la tabla de pesos sin el mensaje
+            pesos = st.session_state.pesos_ahp
+            pesos_limpios = {}
+            for k, v in pesos.items():
+                if isinstance(v, dict):
+                    val = list(v.values())[0]
+                elif isinstance(v, pd.Series):
+                    val = v.iloc[0]
+                else:
+                    val = v
+                pesos_limpios[k] = float(val)
+            # Crear DataFrame con los pesos
+            metricas_list = list(pesos_limpios.keys())
+            pesos_list = [pesos_limpios[k] for k in metricas_list]
+            nombres_list = [NOMBRES_METRICAS[k] for k in metricas_list]
+            df_pesos = pd.DataFrame({
+                'Métrica': nombres_list,
+                'Peso': pesos_list
+            })
+            # Agregar columna de importancia relativa con criterios equilibrados
+            df_pesos['Importancia'] = df_pesos['Peso'].apply(
+                lambda x: '🔴 Alta' if x >= 0.20 else '🟡 Media' if 0.10 < x < 0.20 else '🟢 Baja'
+            )
+            st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
             # Añadir expander de gestión de configuraciones de pesos calculados
             with st.expander("Gestión de configuraciones de pesos calculados"):
                 if 'configuraciones_ahp' not in st.session_state:
                     st.session_state.configuraciones_ahp = {}
-
                 nuevo_nombre = st.text_input("Guardar configuración como", "")
                 if st.button("Guardar configuración") and nuevo_nombre:
                     config_actual = {
@@ -850,7 +886,7 @@ with col2:
                     }
                     st.session_state.configuraciones_ahp[nuevo_nombre] = config_actual
                     st.success(f"Configuración '{nuevo_nombre}' guardada correctamente.")
-
+                    st.rerun()
                 if st.session_state.configuraciones_ahp:
                     seleccion = st.selectbox("Seleccionar configuración guardada", list(st.session_state.configuraciones_ahp.keys()))
                     col_config = st.columns(2)
@@ -860,38 +896,50 @@ with col2:
                         st.session_state.matriz_comparacion = config['matriz']
                         if 'ahp_resultados' not in st.session_state:
                             st.session_state.ahp_resultados = {}
+                        st.session_state.ahp_resultados['pesos'] = config['pesos']
                         st.session_state.ahp_resultados['rc'] = config['rc']
                         st.success(f"Configuración '{seleccion}' aplicada correctamente.")
                         st.rerun()
-
                     if col_config[1].button("Eliminar configuración"):
                         del st.session_state.configuraciones_ahp[seleccion]
                         st.success(f"Configuración '{seleccion}' eliminada correctamente.")
                         st.rerun()
 
 if submitted:
-    # Eliminar solo los resultados globales, no los pesos AHP
+    # Eliminar solo los resultados globales y la fecha, NO los pesos AHP
     for var in ["resultado_global", "fecha_calculo_global"]:
         if var in st.session_state:
             del st.session_state[var]
 
-    # Determinar los pesos activos en este momento
+    # Determinar los pesos activos y el nombre de la configuración en este momento
     if st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
         if 'pesos_ahp' in st.session_state:
             pesos_usuario = st.session_state.pesos_ahp
+            # Buscar nombre de la configuración calculada activa
+            nombre_config_pesos = "Pesos Calculados"
+            for nombre_config_ahp, config in st.session_state.configuraciones_ahp.items():
+                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_usuario):
+                    nombre_config_pesos = f"Configuración Calculada: {nombre_config_ahp}"
+                    break
         else:
             st.warning("No hay pesos AHP calculados. Se usarán los pesos recomendados.")
             pesos_usuario = obtener_pesos_recomendados()
+            nombre_config_pesos = "Pesos Recomendados"
     elif st.session_state.modo_pesos_radio == "Ajuste Manual":
-        # Tomar los pesos manuales actuales y normalizarlos si es necesario
         pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
         pesos_usuario, _ = validar_pesos_manuales(pesos_manuales)
+        # Buscar nombre de la configuración manual activa
+        nombre_config_pesos = "Pesos Manuales Personalizados"
+        for nombre_config_manual, config in st.session_state.pesos_guardados.items():
+            if to_dict_flat(config) == to_dict_flat(pesos_usuario):
+                nombre_config_pesos = f"Configuración Manual: {nombre_config_manual}"
+                break
     else:
         pesos_usuario = obtener_pesos_recomendados()
+        nombre_config_pesos = "Pesos Recomendados"
 
     # Calcular el índice de sostenibilidad usando estos pesos
     sensor = SostenibilidadIoT(nombre)
-    # Asegurarse de que los pesos sean floats
     pesos_limpios = {}
     for k, v in pesos_usuario.items():
         if isinstance(v, dict):
@@ -936,6 +984,7 @@ if submitted:
         "snapshot_form": {k: st.session_state[f"form_{k}"] for k in form_keys},
         "snapshot_pesos": {
             "modo": st.session_state.modo_pesos_radio,
+            "nombre_configuracion": nombre_config_pesos,
             "pesos_manuales": st.session_state.get("pesos_manuales", {}),
             "pesos_ahp": st.session_state.get("pesos_ahp", {})
         }
@@ -943,7 +992,6 @@ if submitted:
 
     st.session_state.dispositivos.append(dispositivo_data)
 
-    # Mostrar mensaje de confirmación sin resultados
     st.success(f"Dispositivo '{nombre}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
     st.rerun()
 
@@ -1077,25 +1125,8 @@ def mostrar_dispositivo(dispositivo, idx):
                 except Exception:
                     continue
             if pesos_limpios:
-                # Obtener el nombre de la configuración
-                nombre_config = "Pesos Recomendados"  # valor por defecto
-                if dispositivo.get('snapshot_pesos', {}).get('modo') == "Ajuste Manual":
-                    # Buscar en configuraciones manuales
-                    for nombre, config in st.session_state.pesos_guardados.items():
-                        if config == pesos_limpios:
-                            nombre_config = f"Configuración Manual: {nombre}"
-                            break
-                    else:
-                        nombre_config = "Pesos Manuales Personalizados"
-                elif dispositivo.get('snapshot_pesos', {}).get('modo') == "Calcular nuevos pesos":
-                    # Buscar en configuraciones AHP
-                    for nombre, config in st.session_state.configuraciones_ahp.items():
-                        if config['pesos'] == pesos_limpios:
-                            nombre_config = f"Configuración Calculada: {nombre}"
-                            break
-                    else:
-                        nombre_config = "Pesos Calculados"
-
+                # Mostrar el nombre de la configuración guardado explícitamente
+                nombre_config = dispositivo.get('snapshot_pesos', {}).get('nombre_configuracion', 'Desconocido')
                 st.markdown(f"**Configuración de pesos:** {nombre_config}")
                 df_pesos = pd.DataFrame.from_dict(pesos_limpios, orient='index', columns=['Peso'])
                 df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
@@ -1206,17 +1237,17 @@ if "resultado_global" in st.session_state:
         if "pesos_ahp" in st.session_state and st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
             pesos_global = st.session_state.pesos_ahp
             nombre_config = "Pesos Calculados"
-            for nombre, config in st.session_state.configuraciones_ahp.items():
-                if config['pesos'] == pesos_global:
-                    nombre_config = f"Configuración Calculada: {nombre}"
+            for nombre_config, config in st.session_state.configuraciones_ahp.items():
+                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_global):
+                    nombre_config = f"Configuración Calculada: {nombre_config}"
                     break
         elif st.session_state.modo_pesos_radio == "Ajuste Manual":
             pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
             pesos_global, _ = validar_pesos_manuales(pesos_manuales)
             nombre_config = "Pesos Manuales Personalizados"
-            for nombre, config in st.session_state.pesos_guardados.items():
-                if config == pesos_global:
-                    nombre_config = f"Configuración Manual: {nombre}"
+            for nombre_config, config in st.session_state.pesos_guardados.items():
+                if to_dict_flat(config) == to_dict_flat(pesos_global):
+                    nombre_config = f"Configuración Manual: {nombre_config}"
                     break
         else:
             pesos_global = obtener_pesos_recomendados()
