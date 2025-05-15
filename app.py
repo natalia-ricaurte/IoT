@@ -3,7 +3,12 @@ import numpy as np
 import pandas as pd
 from streamlit_echarts import st_echarts
 import uuid
-import datetime
+from datetime import datetime
+from io import BytesIO
+import openpyxl
+from openpyxl.chart import RadarChart, Reference
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 
 from pesos import (
     obtener_pesos_recomendados,
@@ -45,6 +50,9 @@ def inicializar_estado():
     # Solo inicializar modo_pesos_radio si no está en modo edición
     if 'modo_pesos_radio' not in st.session_state and not st.session_state.get('modo_edicion', False):
         st.session_state.modo_pesos_radio = "Pesos Recomendados"
+
+    if 'configuraciones_ahp' not in st.session_state:
+        st.session_state.configuraciones_ahp = {}
 
 def reiniciar_estado():
     """Reinicia el estado de la aplicación a sus valores iniciales."""
@@ -326,11 +334,175 @@ def mostrar_matriz_ahp():
         mostrar_resultados_ahp(st.session_state.ahp_resultados['pesos'], st.session_state.ahp_resultados['rc'])
     st.stop()
 
+def exportar_resultados_excel():
+    """Exporta todos los resultados a un archivo Excel con gráficos."""
+    # Asegurar que la fecha esté inicializada
+    if 'fecha_calculo_global' not in st.session_state:
+        st.session_state.fecha_calculo_global = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    wb = openpyxl.Workbook()
+    ws_resumen = wb.active
+    ws_resumen.title = "Resumen"
+    ws_resumen['A1'] = "Dashboard de Evaluación de Sostenibilidad - Dispositivos IoT"
+    ws_resumen['A1'].font = Font(bold=True, size=14)
+    ws_resumen['A3'] = f"Fecha y hora del cálculo: {st.session_state.fecha_calculo_global}"
+    ws_resumen['A4'] = f"Índice de Sostenibilidad Global: {st.session_state.resultado_global['promedio_total']:.2f}/10"
+    # Obtener nombre de la configuración de pesos y los pesos globales
+    if st.session_state.modo_pesos_radio == "Calcular nuevos pesos" and 'pesos_ahp' in st.session_state:
+        nombre_config = "Pesos Calculados"
+        pesos_global = st.session_state.pesos_ahp
+        for nombre, config in st.session_state.configuraciones_ahp.items():
+            if config['pesos'] == st.session_state.pesos_ahp:
+                nombre_config = f"Configuración Calculada: {nombre}"
+                break
+    elif st.session_state.modo_pesos_radio == "Ajuste Manual":
+        nombre_config = "Pesos Manuales Personalizados"
+        pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+        pesos_global, _ = validar_pesos_manuales(pesos_manuales)
+        for nombre, config in st.session_state.pesos_guardados.items():
+            if config == pesos_global:
+                nombre_config = f"Configuración Manual: {nombre}"
+                break
+    else:
+        nombre_config = "Pesos Recomendados"
+        pesos_global = obtener_pesos_recomendados()
+    ws_resumen['A5'] = f"Configuración de pesos utilizada: {nombre_config}"
+    # --- Tabla de pesos utilizados ---
+    ws_resumen['A7'] = "Pesos utilizados para el cálculo global"
+    ws_resumen['A7'].font = Font(bold=True)
+    ws_resumen['A8'] = "Métrica"
+    ws_resumen['B8'] = "Peso"
+    ws_resumen['A8'].font = ws_resumen['B8'].font = Font(bold=True)
+    for i, k in enumerate(NOMBRES_METRICAS.keys()):
+        valor_peso = pesos_global[k]
+        if isinstance(valor_peso, dict):
+            valor_peso = list(valor_peso.values())[0]
+        try:
+            valor_peso = float(valor_peso)
+        except Exception:
+            valor_peso = ''
+        ws_resumen[f'A{9+i}'] = NOMBRES_METRICAS[k]
+        ws_resumen[f'B{9+i}'] = valor_peso
+    fila_grafico = 9 + len(NOMBRES_METRICAS) + 1
+    ws_resumen[f'A{fila_grafico}'] = "Gráfico de Métricas Globales"
+    ws_resumen[f'A{fila_grafico}'].font = Font(bold=True)
+    # Preparar datos para el gráfico
+    metricas = list(NOMBRES_METRICAS.values())
+    valores = [st.session_state.resultado_global['promedio_metricas'][k] for k in NOMBRES_METRICAS.keys()]
+    for i, (metrica, valor) in enumerate(zip(metricas, valores)):
+        ws_resumen[f'A{fila_grafico+2+i}'] = metrica
+        ws_resumen[f'B{fila_grafico+2+i}'] = valor
+    chart = RadarChart()
+    chart.type = "standard"
+    chart.style = 2
+    chart.title = "Promedio de Métricas Normalizadas"
+    data = Reference(ws_resumen, min_col=2, min_row=fila_grafico+2, max_row=fila_grafico+1+len(metricas))
+    cats = Reference(ws_resumen, min_col=1, min_row=fila_grafico+2, max_row=fila_grafico+1+len(metricas))
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(cats)
+    chart.y_axis.scaling.min = 0
+    chart.y_axis.scaling.max = 10
+    ws_resumen.add_chart(chart, f"D{fila_grafico}")
+    # Hoja de Dispositivos
+    ws_dispositivos = wb.create_sheet("Dispositivos")
+    ws_dispositivos['A1'] = "Lista de Dispositivos Evaluados"
+    ws_dispositivos['A1'].font = Font(bold=True, size=14)
+    headers = ['Nombre', 'Índice de Sostenibilidad']
+    for i, header in enumerate(headers):
+        ws_dispositivos[f'{get_column_letter(i+1)}3'] = header
+        ws_dispositivos[f'{get_column_letter(i+1)}3'].font = Font(bold=True)
+    for i, dispositivo in enumerate(st.session_state.dispositivos):
+        ws_dispositivos[f'A{i+4}'] = dispositivo['nombre']
+        ws_dispositivos[f'B{i+4}'] = dispositivo['resultado']['indice_sostenibilidad']
+    # Hoja de Detalles por Dispositivo
+    for dispositivo in st.session_state.dispositivos:
+        ws_detalle = wb.create_sheet(f"Detalle_{dispositivo['nombre'][:20]}")
+        ws_detalle['A1'] = f"Detalles del Dispositivo: {dispositivo['nombre']}"
+        ws_detalle['A1'].font = Font(bold=True, size=14)
+        ws_detalle['A3'] = f"Índice de Sostenibilidad: {dispositivo['resultado']['indice_sostenibilidad']:.2f}/10"
+        # Datos de entrada
+        ws_detalle['A5'] = "Datos de Entrada"
+        ws_detalle['A5'].font = Font(bold=True)
+        datos_entrada = {
+            'Potencia (W)': dispositivo['potencia'],
+            'Horas uso diario': dispositivo['horas'],
+            'Días uso/año': dispositivo['dias'],
+            'Peso (kg)': dispositivo['peso'],
+            'Vida útil (años)': dispositivo['vida'],
+            'Energía renovable (%)': dispositivo['energia_renovable'],
+            'Funcionalidad': dispositivo['funcionalidad'],
+            'Reciclabilidad (%)': dispositivo['reciclabilidad']
+        }
+        for i, (key, value) in enumerate(datos_entrada.items()):
+            ws_detalle[f'A{i+6}'] = key
+            ws_detalle[f'B{i+6}'] = value
+        # --- Nombre de la configuración de pesos utilizada por dispositivo ---
+        # Determinar el nombre de la configuración igual que en el dashboard
+        pesos_disp = dispositivo.get('pesos_utilizados', {})
+        nombre_config_disp = "Pesos Recomendados"
+        modo_disp = dispositivo.get('snapshot_pesos', {}).get('modo', None)
+        if modo_disp == "Ajuste Manual":
+            for nombre, config in st.session_state.pesos_guardados.items():
+                pesos_limpios = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_disp.items()}
+                if config == pesos_limpios:
+                    nombre_config_disp = f"Configuración Manual: {nombre}"
+                    break
+            else:
+                nombre_config_disp = "Pesos Manuales Personalizados"
+        elif modo_disp == "Calcular nuevos pesos":
+            for nombre, config in st.session_state.configuraciones_ahp.items():
+                pesos_limpios = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_disp.items()}
+                if config['pesos'] == pesos_limpios:
+                    nombre_config_disp = f"Configuración Calculada: {nombre}"
+                    break
+            else:
+                nombre_config_disp = "Pesos Calculados"
+        ws_detalle['D4'] = f"Configuración de pesos utilizada: {nombre_config_disp}"
+        ws_detalle['D4'].font = Font(bold=True)
+        # --- Tabla de pesos utilizados por dispositivo ---
+        ws_detalle['D5'] = "Pesos utilizados"
+        ws_detalle['D5'].font = Font(bold=True)
+        ws_detalle['D6'] = "Métrica"
+        ws_detalle['E6'] = "Peso"
+        ws_detalle['D6'].font = ws_detalle['E6'].font = Font(bold=True)
+        for j, k in enumerate(NOMBRES_METRICAS.keys()):
+            valor_peso = pesos_disp.get(k, None)
+            if isinstance(valor_peso, dict):
+                valor_peso = list(valor_peso.values())[0]
+            try:
+                valor_peso = float(valor_peso)
+            except Exception:
+                valor_peso = ''
+            ws_detalle[f'D{7+j}'] = NOMBRES_METRICAS[k]
+            ws_detalle[f'E{7+j}'] = valor_peso
+        # Métricas normalizadas
+        base_radar = 7 + len(NOMBRES_METRICAS) + 1
+        ws_detalle[f'G5'] = "Métricas Normalizadas"
+        ws_detalle[f'G5'].font = Font(bold=True)
+        for i, (key, value) in enumerate(dispositivo['resultado']['metricas_normalizadas'].items()):
+            ws_detalle[f'G{6+i}'] = NOMBRES_METRICAS[key]
+            ws_detalle[f'H{6+i}'] = value
+        # Crear gráfico radar para el dispositivo
+        chart = RadarChart()
+        chart.type = "standard"
+        chart.style = 2
+        chart.title = f"Métricas Normalizadas - {dispositivo['nombre']}"
+        data = Reference(ws_detalle, min_col=8, min_row=6, max_row=6+len(NOMBRES_METRICAS)-1)
+        cats = Reference(ws_detalle, min_col=7, min_row=6, max_row=6+len(NOMBRES_METRICAS)-1)
+        chart.add_data(data, titles_from_data=True)
+        chart.set_categories(cats)
+        chart.y_axis.scaling.min = 0
+        chart.y_axis.scaling.max = 10
+        ws_detalle.add_chart(chart, "J5")
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
+    return excel_file
+
 # --- INICIALIZACIÓN DE LA APLICACIÓN ---
 st.set_page_config(page_title="Dashboard Sostenibilidad IoT", layout="wide")
 
 # Inicializar variables básicas
-if "dispositivos" not in st.session_state:
+if 'dispositivos' not in st.session_state:
     st.session_state.dispositivos = []
 
 if 'matriz_ahp_abierta' not in st.session_state:
@@ -346,6 +518,9 @@ if 'matriz_comparacion' not in st.session_state:
 
 if 'modo_pesos_radio' not in st.session_state:
     st.session_state.modo_pesos_radio = "Pesos Recomendados"
+
+if 'configuraciones_ahp' not in st.session_state:
+    st.session_state.configuraciones_ahp = {}
 
 # Inicializar pesos manuales si no existen
 if 'pesos_manuales' not in st.session_state:
@@ -984,25 +1159,20 @@ if st.session_state.dispositivos:
 
 # --- MOSTRAR RESULTADOS GLOBALES ---
 if "resultado_global" in st.session_state:
+    st.markdown("---")
     resultado_global = st.session_state.resultado_global
     promedio_total = resultado_global["promedio_total"]
     promedio_metricas = resultado_global["promedio_metricas"]
 
-    st.markdown("---")
-    st.success(f"Índice de Sostenibilidad Global: {promedio_total:.2f}/10")
-
-    col1, col2 = st.columns([2, 1])
-
     # Gráfico del promedio a la izquierda
+    col1, col2 = st.columns([2, 1])
     with col1:
         radar_chart(promedio_metricas, "Promedio de Métricas Normalizadas", key="radar_total")
-
     # Recomendaciones globales a la derecha
     with col2:
         st.metric("Índice de Sostenibilidad Global", f"{promedio_total:.2f}/10")
         st.markdown("### Recomendaciones Globales")
         recomendaciones_globales = []
-
         if promedio_metricas["ER"] < 5:
             recomendaciones_globales.append("Aumentar uso de energía renovable.")
         if promedio_metricas["DP"] < 5:
@@ -1013,42 +1183,29 @@ if "resultado_global" in st.session_state:
             recomendaciones_globales.append("Mejorar eficiencia energética.")
         if promedio_total < 6:
             recomendaciones_globales.append("Revisar métricas críticas para mejorar el índice global.")
-
         for rec_idx, rec in enumerate(recomendaciones_globales):
             st.button(rec, disabled=True, key=f"global_rec_{rec_idx}")
 
     # --- Detalles del sistema ---
     with st.expander("Detalles del sistema"):
         dispositivos = st.session_state.dispositivos
-        # Cantidad total de dispositivos evaluados
         st.markdown(f"**Cantidad total de dispositivos evaluados:** {len(dispositivos)}")
-
-        # Definir indices antes de usarlo
         indices = [d['resultado']['indice_sostenibilidad'] for d in dispositivos if 'resultado' in d]
-
-        # Desviación estándar de los índices individuales
         if len(indices) > 1:
             std = np.std(indices)
             st.markdown(f"**Desviación estándar de los índices individuales:** {std:.2f}")
         else:
             st.markdown("**Desviación estándar de los índices individuales:** N/A")
-
-        # Fecha y hora del cálculo global
         if 'fecha_calculo_global' not in st.session_state:
-            st.session_state.fecha_calculo_global = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            st.session_state.fecha_calculo_global = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         st.markdown(f"**Fecha y hora del cálculo global:** {st.session_state.fecha_calculo_global}")
-
-        # Nota sobre comparabilidad
         pesos_usados = [str(d.get('pesos_utilizados', {})) for d in dispositivos]
         if len(set(pesos_usados)) > 1:
             st.warning("Atención: los dispositivos fueron evaluados con diferentes configuraciones de pesos. Los índices individuales pueden no ser directamente comparables.")
-
-        # Pesos utilizados para el cálculo global
         st.markdown("**Pesos utilizados para el cálculo global**")
         if "pesos_ahp" in st.session_state and st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
             pesos_global = st.session_state.pesos_ahp
-            # Buscar nombre de configuración
-            nombre_config = "Pesos Calculados"  # valor por defecto
+            nombre_config = "Pesos Calculados"
             for nombre, config in st.session_state.configuraciones_ahp.items():
                 if config['pesos'] == pesos_global:
                     nombre_config = f"Configuración Calculada: {nombre}"
@@ -1056,8 +1213,7 @@ if "resultado_global" in st.session_state:
         elif st.session_state.modo_pesos_radio == "Ajuste Manual":
             pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
             pesos_global, _ = validar_pesos_manuales(pesos_manuales)
-            # Buscar nombre de configuración
-            nombre_config = "Pesos Manuales Personalizados"  # valor por defecto
+            nombre_config = "Pesos Manuales Personalizados"
             for nombre, config in st.session_state.pesos_guardados.items():
                 if config == pesos_global:
                     nombre_config = f"Configuración Manual: {nombre}"
@@ -1065,7 +1221,6 @@ if "resultado_global" in st.session_state:
         else:
             pesos_global = obtener_pesos_recomendados()
             nombre_config = "Pesos Recomendados"
-
         st.markdown(f"**Configuración de pesos:** {nombre_config}")
         pesos_limpios = {}
         for k, v in pesos_global.items():
@@ -1079,8 +1234,6 @@ if "resultado_global" in st.session_state:
         df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
         df_pesos = df_pesos.rename_axis('Métrica').reset_index()
         st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
-
-        # Lista de dispositivos incluidos
         st.markdown("**Dispositivos incluidos en el cálculo global**")
         if dispositivos:
             data_disp = {
@@ -1091,3 +1244,12 @@ if "resultado_global" in st.session_state:
             st.dataframe(df_disp.style.format({'Índice de Sostenibilidad': '{:.2f}'}), use_container_width=True)
         else:
             st.info('No hay dispositivos incluidos actualmente.')
+
+    # Botón de descarga directo
+    excel_file = exportar_resultados_excel()
+    st.download_button(
+        label="Descargar Resultados Completos",
+        data=excel_file,
+        file_name=f"sostenibilidad_iot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
