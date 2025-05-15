@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from streamlit_echarts import st_echarts
+import uuid
 
 from pesos import (
     obtener_pesos_recomendados,
@@ -14,10 +15,12 @@ from modelo import SostenibilidadIoT
 
 def inicializar_pesos_manuales():
     """Inicializa los pesos manuales con los valores recomendados."""
-    pesos_recomendados = obtener_pesos_recomendados()
-    for id in NOMBRES_METRICAS:
-        st.session_state[f"peso_manual_{id}"] = float(pesos_recomendados[id])
-    st.session_state.pesos_manuales = pesos_recomendados.copy()
+    if 'pesos_manuales' not in st.session_state:
+        pesos_recomendados = obtener_pesos_recomendados()
+        st.session_state.pesos_manuales = pesos_recomendados.copy()
+        for id in NOMBRES_METRICAS:
+            if f"peso_manual_{id}" not in st.session_state:
+                st.session_state[f"peso_manual_{id}"] = float(pesos_recomendados[id])
 
 def inicializar_estado():
     """Inicializa todas las variables de estado necesarias."""
@@ -38,6 +41,10 @@ def inicializar_estado():
         n = len(metricas)
         st.session_state.matriz_comparacion = np.ones((n, n))
 
+    # Solo inicializar modo_pesos_radio si no está en modo edición
+    if 'modo_pesos_radio' not in st.session_state and not st.session_state.get('modo_edicion', False):
+        st.session_state.modo_pesos_radio = "Pesos Recomendados"
+
 def reiniciar_estado():
     """Reinicia el estado de la aplicación a sus valores iniciales."""
     st.session_state.dispositivos = []
@@ -47,10 +54,14 @@ def reiniciar_estado():
     metricas = list(NOMBRES_METRICAS.keys())
     n = len(metricas)
     st.session_state.matriz_comparacion = np.ones((n, n))
-    # Reiniciar el modo de pesos al estado inicial
     st.session_state.modo_pesos_radio = "Pesos Recomendados"
-    if 'modo_pesos_guardado' in st.session_state:
-        del st.session_state.modo_pesos_guardado
+    # Eliminar variables adicionales
+    for var in [
+        'modo_pesos_guardado', 'resultado_global', 'pesos_ahp', 'ahp_resultados',
+        'mostrar_tabla_pesos_ahp', 'modo_edicion', 'dispositivo_editando', 'carga_edicion_realizada'
+    ]:
+        if var in st.session_state:
+            del st.session_state[var]
 
 def radar_chart(metricas, titulo, key):
     etiquetas = {
@@ -304,7 +315,28 @@ def mostrar_matriz_ahp():
 
 # --- INICIALIZACIÓN DE LA APLICACIÓN ---
 st.set_page_config(page_title="Dashboard Sostenibilidad IoT", layout="wide")
-inicializar_estado()
+
+# Inicializar variables básicas
+if "dispositivos" not in st.session_state:
+    st.session_state.dispositivos = []
+
+if 'matriz_ahp_abierta' not in st.session_state:
+    st.session_state.matriz_ahp_abierta = False
+
+if 'pesos_guardados' not in st.session_state:
+    st.session_state.pesos_guardados = {}
+
+if 'matriz_comparacion' not in st.session_state:
+    metricas = list(NOMBRES_METRICAS.keys())
+    n = len(metricas)
+    st.session_state.matriz_comparacion = np.ones((n, n))
+
+if 'modo_pesos_radio' not in st.session_state:
+    st.session_state.modo_pesos_radio = "Pesos Recomendados"
+
+# Inicializar pesos manuales si no existen
+if 'pesos_manuales' not in st.session_state:
+    inicializar_pesos_manuales()
 
 # --- CONTROL DE NAVEGACIÓN ---
 if st.session_state.matriz_ahp_abierta:
@@ -385,34 +417,35 @@ for k, (default, _) in form_keys.items():
 col1, col2 = st.columns([2, 1])
 
 with col1:
+    submitted = False  # Inicializar para evitar NameError
     with st.form("formulario_datos"):
         st.subheader("Datos del dispositivo IoT")
         colA, colB = st.columns(2)
         with colA:
-            nombre = st.text_input("Nombre del dispositivo", "Sensor de temperatura", help="Nombre descriptivo del dispositivo IoT.")
-            potencia = st.number_input("Potencia (W)", value=2.0, help="Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento.")
-            horas = st.number_input("Horas uso diario", value=24.0, help="Cantidad de horas al día que el dispositivo está en uso.")
-            dias = st.number_input("Días uso/año", value=365, help="Número de días al año que el dispositivo opera.")
-            peso = st.number_input("Peso dispositivo (kg)", value=0.1, help="Peso total del dispositivo en kilogramos.")
-            vida = st.number_input("Vida útil (años)", value=5, help="Duración esperada del dispositivo antes de desecharse o reemplazarse.")
+            nombre = st.text_input("Nombre del dispositivo", value=st.session_state["form_nombre"], help="Nombre descriptivo del dispositivo IoT.")
+            potencia = st.number_input("Potencia (W)", value=st.session_state["form_potencia"], help="Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento.")
+            horas = st.number_input("Horas uso diario", value=st.session_state["form_horas"], help="Cantidad de horas al día que el dispositivo está en uso.")
+            dias = st.number_input("Días uso/año", value=st.session_state["form_dias"], help="Número de días al año que el dispositivo opera.")
+            peso = st.number_input("Peso dispositivo (kg)", value=st.session_state["form_peso"], help="Peso total del dispositivo en kilogramos.")
+            vida = st.number_input("Vida útil (años)", value=st.session_state["form_vida"], help="Duración esperada del dispositivo antes de desecharse o reemplazarse.")
 
         with colB:
-            energia_renovable = st.slider("Energía renovable (%)", 0, 100, 30, help="Porcentaje de energía que proviene de fuentes renovables.")
-            funcionalidad = st.slider("Funcionalidad (1-10)", 1, 10, 8, help="Nivel de funcionalidad y utilidad que ofrece el dispositivo.")
-            reciclabilidad = st.slider("Reciclabilidad (%)", 0, 100, 65, help="Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil.")
+            energia_renovable = st.slider("Energía renovable (%)", 0, 100, st.session_state["form_energia_renovable"], help="Porcentaje de energía que proviene de fuentes renovables.")
+            funcionalidad = st.slider("Funcionalidad (1-10)", 1, 10, st.session_state["form_funcionalidad"], help="Nivel de funcionalidad y utilidad que ofrece el dispositivo.")
+            reciclabilidad = st.slider("Reciclabilidad (%)", 0, 100, st.session_state["form_reciclabilidad"], help="Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil.")
 
         with st.expander("Datos de mantenimiento"):
             colM1, colM2 = st.columns(2)
             with colM1:
-                B = st.number_input("Baterías vida útil", value=2, help="Cantidad de baterías necesarias durante toda la vida útil del dispositivo.")
-                Wb = st.number_input("Peso batería (g)", value=50, help="Peso de cada batería en gramos.")
-                M = st.number_input("Mantenimientos", value=1, help="Número de veces que el dispositivo requiere mantenimiento.")
-                C = st.number_input("Componentes reemplazados", value=2, help="Número de componentes reemplazados en mantenimientos.")
+                B = st.number_input("Baterías vida útil", value=st.session_state["form_B"], help="Cantidad de baterías necesarias durante toda la vida útil del dispositivo.")
+                Wb = st.number_input("Peso batería (g)", value=st.session_state["form_Wb"], help="Peso de cada batería en gramos.")
+                M = st.number_input("Mantenimientos", value=st.session_state["form_M"], help="Número de veces que el dispositivo requiere mantenimiento.")
+                C = st.number_input("Componentes reemplazados", value=st.session_state["form_C"], help="Número de componentes reemplazados en mantenimientos.")
 
             with colM2:
-                Wc = st.number_input("Peso componente (g)", value=20, help="Peso promedio de cada componente reemplazado en gramos.")
-                W0 = st.number_input("Peso nuevo (g)", value=200, help="Peso total del dispositivo cuando es nuevo.")
-                W = st.number_input("Peso final (g)", value=180, help="Peso final del dispositivo después del uso.")
+                Wc = st.number_input("Peso componente (g)", value=st.session_state["form_Wc"], help="Peso promedio de cada componente reemplazado en gramos.")
+                W0 = st.number_input("Peso nuevo (g)", value=st.session_state["form_W0"], help="Peso total del dispositivo cuando es nuevo.")
+                W = st.number_input("Peso final (g)", value=st.session_state["form_W"], help="Peso final del dispositivo después del uso.")
 
         submitted = st.form_submit_button("Añadir dispositivo")
 
@@ -582,8 +615,16 @@ with col2:
             mostrar_resultados_ahp(st.session_state.pesos_ahp, st.session_state.ahp_resultados['rc'] if 'ahp_resultados' in st.session_state else None)
 
 if submitted:
-    # Obtener los pesos activos en este momento
-    pesos_usuario = st.session_state.pesos_ahp if "pesos_ahp" in st.session_state else obtener_pesos_recomendados()
+    # Determinar los pesos activos en este momento
+    if "pesos_ahp" in st.session_state and st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
+        pesos_usuario = st.session_state.pesos_ahp
+    elif st.session_state.modo_pesos_radio == "Ajuste Manual":
+        # Tomar los pesos manuales actuales y normalizarlos si es necesario
+        pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+        pesos_usuario, _ = validar_pesos_manuales(pesos_manuales)
+    else:
+        pesos_usuario = obtener_pesos_recomendados()
+
     # Calcular el índice de sostenibilidad usando estos pesos
     sensor = SostenibilidadIoT(nombre)
     sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_usuario.items()}
@@ -598,6 +639,7 @@ if submitted:
     resultado = sensor.calcular_sostenibilidad()
 
     dispositivo_data = {
+        "id": str(uuid.uuid4()),
         "nombre": nombre,
         "potencia": potencia,
         "horas": horas,
@@ -616,7 +658,14 @@ if submitted:
         "W": W,
         "calculo_realizado": True,
         "pesos_utilizados": pesos_usuario,
-        "resultado": resultado
+        "resultado": resultado,
+        # Guardar snapshot del formulario y pesos
+        "snapshot_form": {k: st.session_state[f"form_{k}"] for k in form_keys},
+        "snapshot_pesos": {
+            "modo": st.session_state.modo_pesos_radio,
+            "pesos_manuales": st.session_state.get("pesos_manuales", {}),
+            "pesos_ahp": st.session_state.get("pesos_ahp", {})
+        }
     }
 
     st.session_state.dispositivos.append(dispositivo_data)
@@ -626,64 +675,61 @@ if submitted:
     st.rerun()
 
 # --- BOTÓN DE REFRESH ---
-if st.button("Calcular Indice de Sostenibilidad"):
-    if not st.session_state.dispositivos:
-        st.warning("No hay dispositivos añadidos.")
-    else:
-        total_indices = []
-        metricas_totales = []
+if 'modo_edicion' in st.session_state and st.session_state.modo_edicion:
+    st.warning("Termina de editar o cancelar la edición de un dispositivo antes de calcular el índice global.")
+    st.button("Calcular Indice de Sostenibilidad", disabled=True)
+else:
+    if st.button("Calcular Indice de Sostenibilidad"):
+        if not st.session_state.dispositivos:
+            st.warning("No hay dispositivos añadidos.")
+        else:
+            total_indices = []
+            metricas_totales = []
 
-        for idx, dispositivo in enumerate(st.session_state.dispositivos):
-            # Solo recalcular si no se ha calculado previamente
-            if not dispositivo.get("calculo_realizado", False):
-                sensor = SostenibilidadIoT(dispositivo["nombre"])
+            for idx, dispositivo in enumerate(st.session_state.dispositivos):
+                # Si no existe resultado, recalcularlo usando los pesos guardados
+                if "resultado" not in dispositivo or not dispositivo["calculo_realizado"]:
+                    sensor = SostenibilidadIoT(dispositivo["nombre"])
+                    sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in dispositivo["pesos_utilizados"].items()}
+                    sensor.calcular_consumo_energia(dispositivo["potencia"], dispositivo["horas"], dispositivo["dias"])
+                    sensor.calcular_huella_carbono()
+                    sensor.calcular_ewaste(dispositivo["peso"], dispositivo["vida"])
+                    sensor.calcular_energia_renovable(dispositivo["energia_renovable"])
+                    sensor.calcular_eficiencia_energetica(dispositivo["funcionalidad"])
+                    sensor.calcular_durabilidad(dispositivo["vida"])
+                    sensor.calcular_reciclabilidad(dispositivo["reciclabilidad"])
+                    sensor.calcular_indice_mantenimiento(
+                        dispositivo["B"], dispositivo["Wb"], dispositivo["M"], 
+                        dispositivo["C"], dispositivo["Wc"], dispositivo["W0"], dispositivo["W"]
+                    )
+                    resultado = sensor.calcular_sostenibilidad()
+                    dispositivo["resultado"] = resultado
+                    dispositivo["calculo_realizado"] = True
 
-                # Obtener los pesos
-                pesos_usuario = st.session_state.pesos_ahp if "pesos_ahp" in st.session_state else obtener_pesos_recomendados()
-                sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_usuario.items()}
+                # Actualizar listas para el cálculo global
+                total_indices.append(dispositivo["resultado"]["indice_sostenibilidad"])
+                metricas_totales.append(dispositivo["resultado"]["metricas_normalizadas"])
 
-                # Calcular métricas
-                sensor.calcular_consumo_energia(dispositivo["potencia"], dispositivo["horas"], dispositivo["dias"])
-                sensor.calcular_huella_carbono()
-                sensor.calcular_ewaste(dispositivo["peso"], dispositivo["vida"])
-                sensor.calcular_energia_renovable(dispositivo["energia_renovable"])
-                sensor.calcular_eficiencia_energetica(dispositivo["funcionalidad"])
-                sensor.calcular_durabilidad(dispositivo["vida"])
-                sensor.calcular_reciclabilidad(dispositivo["reciclabilidad"])
-                sensor.calcular_indice_mantenimiento(
-                    dispositivo["B"], dispositivo["Wb"], dispositivo["M"], 
-                    dispositivo["C"], dispositivo["Wc"], dispositivo["W0"], dispositivo["W"]
-                )
+            # Cálculo del índice global
+            promedio_total = sum(total_indices) / len(total_indices)
 
-                # Calcular el índice de sostenibilidad
-                resultado = sensor.calcular_sostenibilidad()
-                dispositivo["resultado"] = resultado
-                dispositivo["calculo_realizado"] = True
+            # Calcular promedio de métricas
+            promedio_metricas = {
+                key: sum(m[key] for m in metricas_totales) / len(metricas_totales)
+                for key in metricas_totales[0]
+            }
 
-            # Actualizar listas para el cálculo global
-            total_indices.append(dispositivo["resultado"]["indice_sostenibilidad"])
-            metricas_totales.append(dispositivo["resultado"]["metricas_normalizadas"])
+            # Guardar el resultado global
+            st.session_state.resultado_global = {
+                "promedio_total": promedio_total,
+                "promedio_metricas": promedio_metricas
+            }
 
-        # Cálculo del índice global
-        promedio_total = sum(total_indices) / len(total_indices)
-
-        # Calcular promedio de métricas
-        promedio_metricas = {
-            key: sum(m[key] for m in metricas_totales) / len(metricas_totales)
-            for key in metricas_totales[0]
-        }
-
-        # Guardar el resultado global
-        st.session_state.resultado_global = {
-            "promedio_total": promedio_total,
-            "promedio_metricas": promedio_metricas
-        }
-
-        st.success("Resultados actualizados correctamente.")
+            st.success("Resultados actualizados correctamente.")
 
 # --- FUNCIÓN PARA MOSTRAR RESULTADOS DE UN DISPOSITIVO ---
 def mostrar_dispositivo(dispositivo, idx):
-    """Muestra el gráfico y las recomendaciones del dispositivo."""
+    """Muestra el gráfico, recomendaciones y detalles completos del dispositivo."""
     if dispositivo.get("calculo_realizado", False) and "resultado" in dispositivo:
         resultado = dispositivo["resultado"]
         nombre = dispositivo["nombre"]
@@ -720,6 +766,66 @@ def mostrar_dispositivo(dispositivo, idx):
             for rec_idx, rec in enumerate(recomendaciones):
                 st.button(rec, disabled=True, key=f"rec_{idx}_{rec_idx}")
 
+        # --- Secciones de detalles ---
+        st.markdown("#### Detalles completos del dispositivo")
+        with st.expander("Datos de entrada del dispositivo"):
+            nombres_campos = {
+                'nombre': 'Nombre del dispositivo',
+                'potencia': 'Potencia (W)',
+                'horas': 'Horas de uso diario',
+                'dias': 'Días de uso al año',
+                'peso': 'Peso del dispositivo (kg)',
+                'vida': 'Vida útil (años)',
+                'energia_renovable': 'Energía renovable (%)',
+                'funcionalidad': 'Funcionalidad (1-10)',
+                'reciclabilidad': 'Reciclabilidad (%)',
+                'B': 'Baterías vida útil',
+                'Wb': 'Peso batería (g)',
+                'M': 'Mantenimientos',
+                'C': 'Componentes reemplazados',
+                'Wc': 'Peso componente (g)',
+                'W0': 'Peso nuevo (g)',
+                'W': 'Peso final (g)'
+            }
+            datos = {nombres_campos[k]: v for k, v in dispositivo.items() if k in nombres_campos}
+            df_datos = pd.DataFrame(datos, index=[0]).T
+            df_datos.columns = ['Valor']
+            st.dataframe(df_datos, use_container_width=True)
+
+        with st.expander("Pesos utilizados"):
+            pesos = dispositivo.get('pesos_utilizados', {})
+            # Limpiar y asegurar que todos los valores sean floats
+            pesos_limpios = {}
+            for k, v in pesos.items():
+                if isinstance(v, dict):
+                    v = list(v.values())[0]
+                try:
+                    pesos_limpios[k] = float(v)
+                except Exception:
+                    continue
+            if pesos_limpios:
+                df_pesos = pd.DataFrame.from_dict(pesos_limpios, orient='index', columns=['Peso'])
+                df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
+                df_pesos = df_pesos.rename_axis('Métrica').reset_index()
+                st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
+            else:
+                st.info('No se registraron pesos para este dispositivo.')
+
+        # Checkbox y confirmación para eliminar
+        eliminar_key = f'eliminar_{dispositivo["id"]}'
+        if st.checkbox('Eliminar dispositivo', key=eliminar_key):
+            st.warning('¿Estás seguro de que deseas eliminar este dispositivo? Esta acción no se puede deshacer.')
+            if st.button('Confirmar eliminación', key=f'confirmar_{dispositivo["id"]}'):
+                st.session_state.dispositivos = [d for d in st.session_state.dispositivos if d["id"] != dispositivo["id"]]
+                if not st.session_state.dispositivos:
+                    if "resultado_global" in st.session_state:
+                        del st.session_state.resultado_global
+                    for var in ["mostrar_tabla_pesos_ahp", "pesos_ahp", "ahp_resultados"]:
+                        if var in st.session_state:
+                            del st.session_state[var]
+                st.success(f"Dispositivo '{nombre}' eliminado correctamente.")
+                st.rerun()
+
 # --- MOSTRAR RESULTADOS INDIVIDUALES ---
 if st.session_state.dispositivos:
     st.markdown("---")
@@ -728,17 +834,37 @@ if st.session_state.dispositivos:
     dispositivos = st.session_state.dispositivos
     num_dispositivos = len(dispositivos)
 
-    for i in range(0, num_dispositivos, 2):
-        col1, col2 = st.columns(2)
-
-        # Mostrar dispositivo en la primera columna
-        with col1:
-            mostrar_dispositivo(dispositivos[i], i)
-
-        # Mostrar dispositivo en la segunda columna, si existe
-        if i + 1 < num_dispositivos:
-            with col2:
-                mostrar_dispositivo(dispositivos[i + 1], i + 1)
+    # Mostrar resultados individuales de todos los dispositivos
+    for idx, disp in enumerate(dispositivos):
+        # Si no existe resultado, recalcularlo usando los pesos guardados
+        if "resultado" not in disp or not disp["calculo_realizado"]:
+            sensor = SostenibilidadIoT(disp["nombre"])
+            sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in disp["pesos_utilizados"].items()}
+            sensor.calcular_consumo_energia(disp["potencia"], disp["horas"], disp["dias"])
+            sensor.calcular_huella_carbono()
+            sensor.calcular_ewaste(disp["peso"], disp["vida"])
+            sensor.calcular_energia_renovable(disp["energia_renovable"])
+            sensor.calcular_eficiencia_energetica(disp["funcionalidad"])
+            sensor.calcular_durabilidad(disp["vida"])
+            sensor.calcular_reciclabilidad(disp["reciclabilidad"])
+            sensor.calcular_indice_mantenimiento(
+                disp["B"], disp["Wb"], disp["M"], disp["C"], disp["Wc"], disp["W0"], disp["W"]
+            )
+            resultado = sensor.calcular_sostenibilidad()
+            disp["resultado"] = resultado
+            disp["calculo_realizado"] = True
+        # Mostrar resumen y botón de expandir/ocultar detalles
+        with st.container():
+            col_res, col_btn_det = st.columns([5, 1])
+            col_res.markdown(f"**{disp['nombre']}** — Índice: {disp['resultado']['indice_sostenibilidad']:.2f}/10")
+            key_exp = f"expandir_disp_{disp['id']}"
+            if key_exp not in st.session_state:
+                st.session_state[key_exp] = False
+            if col_btn_det.button("Mostrar detalles" if not st.session_state[key_exp] else "Ocultar detalles", key=f"btn_toggle_{disp['id']}"):
+                st.session_state[key_exp] = not st.session_state[key_exp]
+                st.rerun()
+            if st.session_state[key_exp]:
+                mostrar_dispositivo(disp, disp['id'])
 
 # --- MOSTRAR RESULTADOS GLOBALES ---
 if "resultado_global" in st.session_state:
@@ -757,6 +883,7 @@ if "resultado_global" in st.session_state:
 
     # Recomendaciones globales a la derecha
     with col2:
+        st.metric("Índice de Sostenibilidad Global", f"{promedio_total:.2f}/10")
         st.markdown("### Recomendaciones Globales")
         recomendaciones_globales = []
 
