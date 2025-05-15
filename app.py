@@ -333,6 +333,46 @@ with st.expander("Ver métricas clave del modelo"):
     8. **IM - Mantenimiento:** Impacto de baterías, reemplazos y desgaste.
     """)
 
+with st.expander("Guía rápida de uso del dashboard"):
+    st.markdown("""
+1. **Define los pesos de las métricas**
+   - Selecciona el método de asignación de pesos en la columna derecha (recomendado hacerlo antes de ingresar dispositivos).
+   - Puedes usar los pesos recomendados, ajustarlos manualmente o calcular nuevos pesos personalizados.
+
+2. **Ingresa las características de tus dispositivos IoT**
+   - Completa el formulario y pulsa 'Añadir dispositivo' para guardar cada uno.
+   - Si entras a la opción de "calcular nuevos pesos" y editas la matriz, deberás volver a ingresar los datos del formulario.
+
+3. **Calcula y analiza los resultados**
+   - Pulsa 'Calcular Índice de Sostenibilidad' para ver los resultados individuales y globales.
+
+> **Consejo:** Si necesitas calcular nuevos pesos personalizados, hazlo antes de ingresar los datos de los dispositivos para evitar perder el progreso del formulario.
+    """)
+
+# Definir claves y valores por defecto para el formulario
+form_keys = {
+    'nombre': ("Sensor de temperatura", "Nombre descriptivo del dispositivo IoT."),
+    'potencia': (2.0, "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento."),
+    'horas': (24.0, "Cantidad de horas al día que el dispositivo está en uso."),
+    'dias': (365, "Número de días al año que el dispositivo opera."),
+    'peso': (0.1, "Peso total del dispositivo en kilogramos."),
+    'vida': (5, "Duración esperada del dispositivo antes de desecharse o reemplazarse."),
+    'energia_renovable': (30, "Porcentaje de energía que proviene de fuentes renovables."),
+    'funcionalidad': (8, "Nivel de funcionalidad y utilidad que ofrece el dispositivo."),
+    'reciclabilidad': (65, "Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil."),
+    'B': (2, "Cantidad de baterías necesarias durante toda la vida útil del dispositivo."),
+    'Wb': (50, "Peso de cada batería en gramos."),
+    'M': (1, "Número de veces que el dispositivo requiere mantenimiento."),
+    'C': (2, "Número de componentes reemplazados en mantenimientos."),
+    'Wc': (20, "Peso promedio de cada componente reemplazado en gramos."),
+    'W0': (200, "Peso total del dispositivo cuando es nuevo."),
+    'W': (180, "Peso final del dispositivo después del uso.")
+}
+# Inicializar en session_state si no existen
+for k, (default, _) in form_keys.items():
+    if f"form_{k}" not in st.session_state:
+        st.session_state[f"form_{k}"] = default
+
 col1, col2 = st.columns([2, 1])
 
 with col1:
@@ -364,7 +404,6 @@ with col1:
                 Wc = st.number_input("Peso componente (g)", value=20, help="Peso promedio de cada componente reemplazado en gramos.")
                 W0 = st.number_input("Peso nuevo (g)", value=200, help="Peso total del dispositivo cuando es nuevo.")
                 W = st.number_input("Peso final (g)", value=180, help="Peso final del dispositivo después del uso.")
-
 
         submitted = st.form_submit_button("Añadir dispositivo")
 
@@ -558,8 +597,13 @@ if submitted:
     # Agregar el dispositivo sin mostrar resultados
     st.session_state.dispositivos.append(dispositivo_data)
 
+    # Limpiar el formulario tras añadir
+    for k, (default, _) in form_keys.items():
+        st.session_state[f"form_{k}"] = default
+
     # Mostrar mensaje de confirmación sin resultados
     st.success(f"Dispositivo '{nombre}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
+    st.rerun()
 
 # --- BOTÓN DE REFRESH ---
 if st.button("Calcular Indice de Sostenibilidad"):
