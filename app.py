@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from streamlit_echarts import st_echarts
 import uuid
+import datetime
 
 from pesos import (
     obtener_pesos_recomendados,
@@ -148,7 +149,14 @@ def calcular_pesos_ahp(metricas):
 
 def mostrar_resultados_ahp(pesos, rc):
     """Muestra los resultados del cálculo de pesos por Matriz de Comparación por Pares."""
-    st.success("Pesos calculados mediante la Matriz de Comparación por Pares:")
+    # Obtener nombre de la configuración
+    nombre_config = "Pesos Calculados"  # valor por defecto
+    for nombre, config in st.session_state.configuraciones_ahp.items():
+        if config['pesos'] == pesos:
+            nombre_config = f"Configuración Calculada: {nombre}"
+            break
+    
+    st.success(f"Pesos calculados mediante la Matriz de Comparación por Pares ({nombre_config}):")
     # Convertir los pesos a un formato limpio
     pesos_limpios = {}
     for k, v in pesos.items():
@@ -304,9 +312,14 @@ def mostrar_matriz_ahp():
     with col_reset:
         if st.button("Reiniciar matriz", help="Reinicia la matriz de comparación a valores iniciales (identidad)", key="btn_reiniciar_matriz"):
             st.session_state.matriz_comparacion = np.ones((n, n))
-            st.warning("¡La matriz de comparación ha sido reiniciada a valores iniciales!")
+            # Limpiar los pesos AHP y resultados anteriores
+            if 'pesos_ahp' in st.session_state:
+                del st.session_state.pesos_ahp
             if 'ahp_resultados' in st.session_state:
                 del st.session_state.ahp_resultados
+            if 'mostrar_tabla_pesos_ahp' in st.session_state:
+                del st.session_state.mostrar_tabla_pesos_ahp
+            st.warning("¡La matriz de comparación ha sido reiniciada a valores iniciales!")
             st.rerun()
     # Mostrar resultados si existen
     if st.session_state.get('ahp_resultados'):
@@ -368,27 +381,43 @@ with st.expander("Ver métricas clave del modelo"):
 with st.expander("Guía rápida de uso del dashboard"):
     st.markdown("""
 1. **Define los pesos de las métricas**
-   - Selecciona el método de asignación de pesos en la columna derecha (recomendado hacerlo antes de ingresar dispositivos).
-   - Puedes usar los pesos recomendados, ajustarlos manualmente o calcular nuevos pesos personalizados.
+   - Selecciona el método de asignación de pesos en la columna derecha antes de ingresar dispositivos.
+   - Puedes usar los pesos recomendados, ajustarlos manualmente o calcular nuevos pesos mediante comparación por pares.
+   - **Pesos Recomendados:** Basados en análisis y alineación con ODS.
+   - **Ajuste Manual:** Permite personalizar los pesos y guardar configuraciones personalizadas.
+   - **Pesos Calculados:** Utiliza la matriz de comparación por pares y permite guardar diferentes configuraciones.
+   - **Nota:** Los pesos activos al momento de añadir un dispositivo serán los que se usen para su cálculo.
 
 2. **Ingresa las características de tus dispositivos IoT**
-   - Completa el formulario y pulsa 'Añadir dispositivo' para guardar cada uno.
-   - Si entras a la opción de "calcular nuevos pesos" y editas la matriz, deberás volver a ingresar los datos del formulario.
+   - Completa el formulario y pulsa **'Añadir dispositivo'** para guardar cada uno.
+   - Al añadir un nuevo dispositivo, los resultados globales previos se eliminan automáticamente. Deberás recalcular el índice global para ver los resultados actualizados.
 
-3. **Calcula y analiza los resultados**
-   - Pulsa 'Calcular Índice de Sostenibilidad' para ver los resultados individuales y globales.
+3. **Gestiona tu lista de dispositivos**
+   - Puedes ver los detalles completos de cada dispositivo pulsando **'Mostrar detalles'**.
+   - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo.
+   - Para eliminar un dispositivo, marca la casilla **'Eliminar dispositivo'** y confirma la acción con el botón correspondiente. Al eliminar cualquier dispositivo, los resultados globales se eliminan y deberás recalcular.
 
-> **Consejo:** Si necesitas calcular nuevos pesos personalizados, hazlo antes de ingresar los datos de los dispositivos para evitar perder el progreso del formulario.
+4. **Calcula y analiza los resultados**
+   - Pulsa **'Calcular Índice de Sostenibilidad'** para ver los resultados individuales y globales.
+   - El índice global y los detalles del sistema solo reflejan los dispositivos actualmente en la lista.
+
+5. **Consulta los detalles del sistema**
+   - En la sección de resultados globales, expande **'Detalles del sistema'** para ver:
+     - Cantidad total de dispositivos evaluados.
+     - Desviación estándar de los índices individuales.
+     - Fecha y hora del cálculo global.
+     - Nota sobre comparabilidad si los dispositivos fueron evaluados con diferentes pesos.
+     - Pesos utilizados para el cálculo global.
+     - Lista de dispositivos incluidos y su índice individual.
 
 ---
 
-**Nota sobre los pesos:**
-- Puedes modificar los pesos de las métricas antes de añadir cada dispositivo. Los pesos que estén activos en ese momento serán los que se usen para calcular el índice de sostenibilidad de ese dispositivo.
-- Si cambias los pesos y luego calculas el índice global, se usará el conjunto de pesos que esté activo en ese momento para el cálculo global.
-- Esto te permite comparar dispositivos bajo diferentes criterios, pero recuerda que los índices individuales pueden no ser directamente comparables si usaste pesos distintos.
-
-> **Consejo:** Utiliza la misma configuración de pesos para todos los dispositivos para que los índices sean comparables y el calculo global sea acertado.
-    """)
+**Consejos y advertencias:**
+- Si cambias los pesos o la lista de dispositivos, recuerda recalcular el índice global para obtener resultados actualizados.
+- Si los dispositivos fueron evaluados con diferentes configuraciones de pesos, los índices individuales pueden no ser directamente comparables.
+- El dashboard elimina automáticamente los resultados globales al añadir o eliminar dispositivos para evitar mostrar información desactualizada.
+- Puedes guardar y cargar diferentes configuraciones de pesos tanto para el ajuste manual como para los pesos calculados mediante comparación por pares.
+""")
 
 # Definir claves y valores por defecto para el formulario
 form_keys = {
@@ -542,6 +571,15 @@ with col2:
         if 'pesos_guardados' not in st.session_state:
             st.session_state.pesos_guardados = {}
 
+        # Mostrar configuración activa
+        pesos_actuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+        nombre_config = "Pesos Manuales Personalizados"  # valor por defecto
+        for nombre, config in st.session_state.pesos_guardados.items():
+            if config == pesos_actuales:
+                nombre_config = f"Configuración Manual: {nombre}"
+                break
+        st.success(f"**Configuración activa:** {nombre_config}")
+
         with st.expander("Gestión de configuraciones personalizadas"):
             nuevo_nombre = st.text_input("Guardar configuración como", "")
             if st.button("Guardar configuración") and nuevo_nombre:
@@ -605,19 +643,70 @@ with col2:
         - Se recomienda comenzar comparando las métricas más importantes entre sí
         """)
         
+        # Mostrar configuración activa si hay pesos calculados
+        if 'pesos_ahp' in st.session_state and st.session_state.pesos_ahp is not None:
+            nombre_config = "Pesos Calculados"  # valor por defecto
+            for nombre, config in st.session_state.configuraciones_ahp.items():
+                if config['pesos'] == st.session_state.pesos_ahp:
+                    nombre_config = f"Configuración Calculada: {nombre}"
+                    break
+            st.success(f"**Configuración activa:** {nombre_config}")
+        
         if st.button("Editar matriz de comparación por pares"):
             st.session_state.modo_pesos_guardado = st.session_state.modo_pesos_radio
             st.session_state.matriz_ahp_abierta = True
             st.rerun()
 
         # Mostrar la tabla resumen de pesos calculados si existen
-        if 'pesos_ahp' in st.session_state:
+        if 'pesos_ahp' in st.session_state and st.session_state.pesos_ahp is not None:
             mostrar_resultados_ahp(st.session_state.pesos_ahp, st.session_state.ahp_resultados['rc'] if 'ahp_resultados' in st.session_state else None)
 
+            # Añadir expander de gestión de configuraciones de pesos calculados
+            with st.expander("Gestión de configuraciones de pesos calculados"):
+                if 'configuraciones_ahp' not in st.session_state:
+                    st.session_state.configuraciones_ahp = {}
+
+                nuevo_nombre = st.text_input("Guardar configuración como", "")
+                if st.button("Guardar configuración") and nuevo_nombre:
+                    config_actual = {
+                        'pesos': st.session_state.pesos_ahp,
+                        'rc': st.session_state.ahp_resultados['rc'] if 'ahp_resultados' in st.session_state else None,
+                        'matriz': st.session_state.matriz_comparacion.copy()
+                    }
+                    st.session_state.configuraciones_ahp[nuevo_nombre] = config_actual
+                    st.success(f"Configuración '{nuevo_nombre}' guardada correctamente.")
+
+                if st.session_state.configuraciones_ahp:
+                    seleccion = st.selectbox("Seleccionar configuración guardada", list(st.session_state.configuraciones_ahp.keys()))
+                    col_config = st.columns(2)
+                    if col_config[0].button("Aplicar configuración"):
+                        config = st.session_state.configuraciones_ahp[seleccion]
+                        st.session_state.pesos_ahp = config['pesos']
+                        st.session_state.matriz_comparacion = config['matriz']
+                        if 'ahp_resultados' not in st.session_state:
+                            st.session_state.ahp_resultados = {}
+                        st.session_state.ahp_resultados['rc'] = config['rc']
+                        st.success(f"Configuración '{seleccion}' aplicada correctamente.")
+                        st.rerun()
+
+                    if col_config[1].button("Eliminar configuración"):
+                        del st.session_state.configuraciones_ahp[seleccion]
+                        st.success(f"Configuración '{seleccion}' eliminada correctamente.")
+                        st.rerun()
+
 if submitted:
+    # Eliminar solo los resultados globales, no los pesos AHP
+    for var in ["resultado_global", "fecha_calculo_global"]:
+        if var in st.session_state:
+            del st.session_state[var]
+
     # Determinar los pesos activos en este momento
-    if "pesos_ahp" in st.session_state and st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
-        pesos_usuario = st.session_state.pesos_ahp
+    if st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
+        if 'pesos_ahp' in st.session_state:
+            pesos_usuario = st.session_state.pesos_ahp
+        else:
+            st.warning("No hay pesos AHP calculados. Se usarán los pesos recomendados.")
+            pesos_usuario = obtener_pesos_recomendados()
     elif st.session_state.modo_pesos_radio == "Ajuste Manual":
         # Tomar los pesos manuales actuales y normalizarlos si es necesario
         pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
@@ -627,7 +716,16 @@ if submitted:
 
     # Calcular el índice de sostenibilidad usando estos pesos
     sensor = SostenibilidadIoT(nombre)
-    sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in pesos_usuario.items()}
+    # Asegurarse de que los pesos sean floats
+    pesos_limpios = {}
+    for k, v in pesos_usuario.items():
+        if isinstance(v, dict):
+            v = list(v.values())[0]
+        try:
+            pesos_limpios[k] = float(v)
+        except Exception:
+            continue
+    sensor.pesos = pesos_limpios
     sensor.calcular_consumo_energia(potencia, horas, dias)
     sensor.calcular_huella_carbono()
     sensor.calcular_ewaste(peso, vida)
@@ -804,6 +902,26 @@ def mostrar_dispositivo(dispositivo, idx):
                 except Exception:
                     continue
             if pesos_limpios:
+                # Obtener el nombre de la configuración
+                nombre_config = "Pesos Recomendados"  # valor por defecto
+                if dispositivo.get('snapshot_pesos', {}).get('modo') == "Ajuste Manual":
+                    # Buscar en configuraciones manuales
+                    for nombre, config in st.session_state.pesos_guardados.items():
+                        if config == pesos_limpios:
+                            nombre_config = f"Configuración Manual: {nombre}"
+                            break
+                    else:
+                        nombre_config = "Pesos Manuales Personalizados"
+                elif dispositivo.get('snapshot_pesos', {}).get('modo') == "Calcular nuevos pesos":
+                    # Buscar en configuraciones AHP
+                    for nombre, config in st.session_state.configuraciones_ahp.items():
+                        if config['pesos'] == pesos_limpios:
+                            nombre_config = f"Configuración Calculada: {nombre}"
+                            break
+                    else:
+                        nombre_config = "Pesos Calculados"
+
+                st.markdown(f"**Configuración de pesos:** {nombre_config}")
                 df_pesos = pd.DataFrame.from_dict(pesos_limpios, orient='index', columns=['Peso'])
                 df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
                 df_pesos = df_pesos.rename_axis('Métrica').reset_index()
@@ -817,12 +935,10 @@ def mostrar_dispositivo(dispositivo, idx):
             st.warning('¿Estás seguro de que deseas eliminar este dispositivo? Esta acción no se puede deshacer.')
             if st.button('Confirmar eliminación', key=f'confirmar_{dispositivo["id"]}'):
                 st.session_state.dispositivos = [d for d in st.session_state.dispositivos if d["id"] != dispositivo["id"]]
-                if not st.session_state.dispositivos:
-                    if "resultado_global" in st.session_state:
-                        del st.session_state.resultado_global
-                    for var in ["mostrar_tabla_pesos_ahp", "pesos_ahp", "ahp_resultados"]:
-                        if var in st.session_state:
-                            del st.session_state[var]
+                # Eliminar resultados globales y relacionados siempre que se elimina un dispositivo
+                for var in ["resultado_global", "fecha_calculo_global", "mostrar_tabla_pesos_ahp", "pesos_ahp", "ahp_resultados"]:
+                    if var in st.session_state:
+                        del st.session_state[var]
                 st.success(f"Dispositivo '{nombre}' eliminado correctamente.")
                 st.rerun()
 
@@ -900,3 +1016,78 @@ if "resultado_global" in st.session_state:
 
         for rec_idx, rec in enumerate(recomendaciones_globales):
             st.button(rec, disabled=True, key=f"global_rec_{rec_idx}")
+
+    # --- Detalles del sistema ---
+    with st.expander("Detalles del sistema"):
+        dispositivos = st.session_state.dispositivos
+        # Cantidad total de dispositivos evaluados
+        st.markdown(f"**Cantidad total de dispositivos evaluados:** {len(dispositivos)}")
+
+        # Definir indices antes de usarlo
+        indices = [d['resultado']['indice_sostenibilidad'] for d in dispositivos if 'resultado' in d]
+
+        # Desviación estándar de los índices individuales
+        if len(indices) > 1:
+            std = np.std(indices)
+            st.markdown(f"**Desviación estándar de los índices individuales:** {std:.2f}")
+        else:
+            st.markdown("**Desviación estándar de los índices individuales:** N/A")
+
+        # Fecha y hora del cálculo global
+        if 'fecha_calculo_global' not in st.session_state:
+            st.session_state.fecha_calculo_global = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        st.markdown(f"**Fecha y hora del cálculo global:** {st.session_state.fecha_calculo_global}")
+
+        # Nota sobre comparabilidad
+        pesos_usados = [str(d.get('pesos_utilizados', {})) for d in dispositivos]
+        if len(set(pesos_usados)) > 1:
+            st.warning("Atención: los dispositivos fueron evaluados con diferentes configuraciones de pesos. Los índices individuales pueden no ser directamente comparables.")
+
+        # Pesos utilizados para el cálculo global
+        st.markdown("**Pesos utilizados para el cálculo global**")
+        if "pesos_ahp" in st.session_state and st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
+            pesos_global = st.session_state.pesos_ahp
+            # Buscar nombre de configuración
+            nombre_config = "Pesos Calculados"  # valor por defecto
+            for nombre, config in st.session_state.configuraciones_ahp.items():
+                if config['pesos'] == pesos_global:
+                    nombre_config = f"Configuración Calculada: {nombre}"
+                    break
+        elif st.session_state.modo_pesos_radio == "Ajuste Manual":
+            pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+            pesos_global, _ = validar_pesos_manuales(pesos_manuales)
+            # Buscar nombre de configuración
+            nombre_config = "Pesos Manuales Personalizados"  # valor por defecto
+            for nombre, config in st.session_state.pesos_guardados.items():
+                if config == pesos_global:
+                    nombre_config = f"Configuración Manual: {nombre}"
+                    break
+        else:
+            pesos_global = obtener_pesos_recomendados()
+            nombre_config = "Pesos Recomendados"
+
+        st.markdown(f"**Configuración de pesos:** {nombre_config}")
+        pesos_limpios = {}
+        for k, v in pesos_global.items():
+            if isinstance(v, dict):
+                v = list(v.values())[0]
+            try:
+                pesos_limpios[k] = float(v)
+            except Exception:
+                continue
+        df_pesos = pd.DataFrame.from_dict(pesos_limpios, orient='index', columns=['Peso'])
+        df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
+        df_pesos = df_pesos.rename_axis('Métrica').reset_index()
+        st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
+
+        # Lista de dispositivos incluidos
+        st.markdown("**Dispositivos incluidos en el cálculo global**")
+        if dispositivos:
+            data_disp = {
+                'Nombre': [d['nombre'] for d in dispositivos],
+                'Índice de Sostenibilidad': [d['resultado']['indice_sostenibilidad'] if 'resultado' in d else None for d in dispositivos]
+            }
+            df_disp = pd.DataFrame(data_disp)
+            st.dataframe(df_disp.style.format({'Índice de Sostenibilidad': '{:.2f}'}), use_container_width=True)
+        else:
+            st.info('No hay dispositivos incluidos actualmente.')
