@@ -1,8 +1,6 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import json
 from streamlit_echarts import st_echarts
 
 from pesos import (
@@ -53,10 +51,6 @@ def reiniciar_estado():
     st.session_state.modo_pesos_radio = "Pesos Recomendados"
     if 'modo_pesos_guardado' in st.session_state:
         del st.session_state.modo_pesos_guardado
-
-from streamlit_echarts import st_echarts
-
-from streamlit_echarts import st_echarts
 
 def radar_chart(metricas, titulo, key):
     etiquetas = {
@@ -143,7 +137,7 @@ def calcular_pesos_ahp(metricas):
 
 def mostrar_resultados_ahp(pesos, rc):
     """Muestra los resultados del cálculo de pesos por Matriz de Comparación por Pares."""
-    st.success("Pesos calculados mediante Matriz de Comparación por Pares:")
+    st.success("Pesos calculados mediante la Matriz de Comparación por Pares:")
     # Convertir los pesos a un formato limpio
     pesos_limpios = {}
     for k, v in pesos.items():
@@ -272,12 +266,26 @@ def mostrar_matriz_ahp():
                 if hasattr(pesos, 'to_dict'):
                     pesos = pesos.to_dict()
                 st.session_state.pesos_ahp = pesos
+                # Guardar los resultados para mostrar en la pantalla principal
+                st.session_state.mostrar_tabla_pesos_ahp = {
+                    'pesos': pesos,
+                    'rc': st.session_state.ahp_resultados['rc']
+                }
             st.session_state.matriz_ahp_abierta = False
             if 'modo_pesos_guardado' in st.session_state:
                 st.session_state.modo_pesos_radio = st.session_state.modo_pesos_guardado
             st.rerun()
     with col_cancel:
         if st.button("Cancelar"):
+            if 'ahp_resultados' in st.session_state:
+                pesos = st.session_state.ahp_resultados['pesos']
+                if hasattr(pesos, 'to_dict'):
+                    pesos = pesos.to_dict()
+                # Guardar los resultados para mostrar en la pantalla principal
+                st.session_state.mostrar_tabla_pesos_ahp = {
+                    'pesos': pesos,
+                    'rc': st.session_state.ahp_resultados['rc']
+                }
             st.session_state.matriz_ahp_abierta = False
             if 'modo_pesos_guardado' in st.session_state:
                 st.session_state.modo_pesos_radio = st.session_state.modo_pesos_guardado
@@ -520,6 +528,10 @@ with col2:
             st.session_state.modo_pesos_guardado = st.session_state.modo_pesos_radio
             st.session_state.matriz_ahp_abierta = True
             st.rerun()
+
+        # Mostrar la tabla resumen de pesos calculados si existen
+        if 'pesos_ahp' in st.session_state:
+            mostrar_resultados_ahp(st.session_state.pesos_ahp, st.session_state.ahp_resultados['rc'] if 'ahp_resultados' in st.session_state else None)
 
 if submitted:
     # Guardar los datos del dispositivo sin hacer cálculos ni mostrar gráficos
