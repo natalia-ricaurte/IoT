@@ -70,14 +70,3 @@ def validar_pesos_manuales(pesos_dict):
         pesos_normalizados = {k: v / suma for k, v in pesos_dict.items()}
         return pesos_normalizados, False
     return pesos_dict, True
-
-NOMBRES_METRICAS = {
-    'CE': 'Consumo de Energía',
-    'HC': 'Huella de Carbono',
-    'EW': 'E-waste',
-    'ER': 'Energía Renovable',
-    'EE': 'Eficiencia Energética',
-    'DP': 'Durabilidad',
-    'RC': 'Reciclabilidad',
-    'IM': 'Mantenimiento'
-}
