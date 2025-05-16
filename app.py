@@ -1,15 +1,12 @@
 # Librerías estándar
 import uuid
 from datetime import datetime
-import json
 
 # Librerías de terceros
 import streamlit as st
-import pandas as pd
-import io
 
 # Módulos locales
-from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS, MAPEO_COLUMNAS_IMPORTACION, ADVERTENCIA_IMPORTACION, GUIA_USO_DASHBOARD
+from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS, MAPEO_COLUMNAS_IMPORTACION, GUIA_USO_DASHBOARD
 from utilidades.manejo_datos import to_dict_flat
 from utilidades.estado import inicializar_estado, reiniciar_estado
 from componentes.dispositivos import mostrar_dispositivo, mostrar_resultados_globales
@@ -125,6 +122,7 @@ with import_container:
         file_name="plantilla_dispositivos.json",
         mime="application/json"
     )
+    st.caption("Recuerda: no cambies los nombres de las columnas (Excel) o claves (JSON) en las plantillas. Deben coincidir exactamente para que la importación funcione.")
 
     # Mostrar uploader solo si mostrar_importar es True
     if st.session_state.mostrar_importar:
