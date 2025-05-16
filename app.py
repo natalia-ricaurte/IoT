@@ -156,6 +156,12 @@ with import_container:
                     pesos_ahp_actual = st.session_state.get('pesos_ahp', None)
                     pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
                     
+                    # Guardar los valores individuales de los pesos manuales
+                    pesos_manuales_individuales = {}
+                    if modo_pesos_actual == "Ajuste Manual":
+                        for k in NOMBRES_METRICAS:
+                            pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+                    
                     # Obtener pesos activos
                     if modo_pesos_actual == "Calcular nuevos pesos":
                         if pesos_ahp_actual:
@@ -234,6 +240,11 @@ with import_container:
                         st.session_state.pesos_ahp = pesos_ahp_actual
                     if pesos_manuales_actual:
                         st.session_state.pesos_manuales = pesos_manuales_actual
+                    
+                    # Restaurar los valores individuales de los pesos manuales
+                    if modo_pesos_actual == "Ajuste Manual":
+                        for k, v in pesos_manuales_individuales.items():
+                            st.session_state[f"peso_manual_{k}"] = v
                     
                     print('DESPUÉS DE AÑADIR IMPORTADO: modo_pesos_radio =', st.session_state.get('modo_pesos_radio'))
                     st.success(f"Dispositivo '{nombre}' añadido correctamente al sistema.")
