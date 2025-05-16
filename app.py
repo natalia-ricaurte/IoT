@@ -6,8 +6,8 @@ from datetime import datetime
 import streamlit as st
 
 # Módulos locales
-from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS, MAPEO_COLUMNAS_IMPORTACION, GUIA_USO_DASHBOARD
-from utilidades.manejo_datos import to_dict_flat
+from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS, GUIA_USO_DASHBOARD
+from utilidades.auxiliares import to_dict_flat, extraer_valor_peso
 from utilidades.estado import inicializar_estado, reiniciar_estado
 from componentes.dispositivos import mostrar_dispositivo, mostrar_resultados_globales
 from componentes.formularios import inicializar_formulario
@@ -17,29 +17,6 @@ from servicios.exportacion import exportar_resultados_excel
 from servicios.importacion import generar_plantilla_excel, leer_archivo_dispositivos, generar_plantilla_json
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 from modelo import SostenibilidadIoT
-
-# --- FUNCIÓN AUXILIAR PARA OBTENER VALOR DE CAMPO IMPORTADO ---
-def obtener_valor_dispositivo(disp, nombre_interno):
-    claves_posibles = [k for k, v in MAPEO_COLUMNAS_IMPORTACION.items() if v == nombre_interno]
-    claves_posibles.append(nombre_interno)
-    for clave in claves_posibles:
-        if clave in disp:
-            return disp[clave]
-    return 'N/A'
-
-# --- FUNCIÓN AUXILIAR PARA EXTRAER VALOR NUMÉRICO DE PESO ---
-def extraer_valor_peso(v):
-    if isinstance(v, dict):
-        for val in v.values():
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                continue
-        raise ValueError("No se encontró valor numérico en el peso.")
-    try:
-        return float(v)
-    except (ValueError, TypeError):
-        raise ValueError(f"No se pudo convertir el valor {v} a número.")
 
 # --- INICIALIZACIÓN DE LA APLICACIÓN ---
 st.set_page_config(page_title="Dashboard Sostenibilidad IoT", layout="wide")

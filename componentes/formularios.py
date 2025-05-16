@@ -3,7 +3,7 @@ import uuid
 from utilidades.constantes import FORM_KEYS, NOMBRES_METRICAS
 from modelo import SostenibilidadIoT
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
-from utilidades.manejo_datos import to_dict_flat
+from utilidades.auxiliares import to_dict_flat
 
 def inicializar_formulario():
     """Inicializa los valores del formulario en el session_state si no existen."""

@@ -7,7 +7,7 @@ from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
 from utilidades.constantes import NOMBRES_METRICAS
-from utilidades.manejo_datos import to_dict_flat
+from utilidades.auxiliares import to_dict_flat
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 
 class ExportadorExcel:

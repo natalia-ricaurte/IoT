@@ -1,6 +1,6 @@
 import pandas as pd
 import io
-from utilidades.constantes import MAPEO_COLUMNAS_IMPORTACION, DESCRIPCION_COLUMNAS_IMPORTACION, ADVERTENCIA_IMPORTACION
+from utilidades.constantes import DESCRIPCION_COLUMNAS_IMPORTACION, ADVERTENCIA_IMPORTACION
 import json
 
 # Esqueleto para la importación de dispositivos desde un archivo CSV, Excel o JSON

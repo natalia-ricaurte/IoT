@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from utilidades.constantes import NOMBRES_METRICAS
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
-from utilidades.manejo_datos import to_dict_flat
+from utilidades.auxiliares import to_dict_flat
 
 def inicializar_pesos_manuales():
     """Inicializa los pesos manuales con los valores recomendados."""
