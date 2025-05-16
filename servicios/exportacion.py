@@ -3,7 +3,7 @@ from datetime import datetime
 from io import BytesIO
 import openpyxl
 from openpyxl.chart import RadarChart, Reference
-from openpyxl.styles import Font
+from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from utilidades.constantes import NOMBRES_METRICAS, DESCRIPCION_COLUMNAS_IMPORTACION, MAPEO_COLUMNAS_IMPORTACION
@@ -173,11 +173,21 @@ class ExportadorExcel:
             ws_dispositivos[f'{get_column_letter(i+1)}3'] = header
             ws_dispositivos[f'{get_column_letter(i+1)}3'].font = Font(bold=True)
 
+        # Resaltar la columna del índice
+        fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")  # Amarillo claro
+        col_idx = len(columnas_internas) + 1
+        cell = ws_dispositivos[f'{get_column_letter(col_idx)}3']
+        cell.font = Font(bold=True)
+        cell.fill = fill
+
         for i, dispositivo in enumerate(st.session_state.dispositivos):
             for j, col in enumerate(columnas_internas):
                 valor = dispositivo.get(col, 'N/A')
                 ws_dispositivos[f'{get_column_letter(j+1)}{i+4}'] = valor
-            ws_dispositivos[f'{get_column_letter(len(columnas_internas)+1)}{i+4}'] = dispositivo['resultado']['indice_sostenibilidad']
+            cell_val = ws_dispositivos[f'{get_column_letter(col_idx)}{i+4}']
+            cell_val.value = dispositivo['resultado']['indice_sostenibilidad']
+            cell_val.fill = fill
+            cell_val.font = Font(bold=True)
 
     def _crear_hoja_detalle_dispositivo(self, dispositivo):
         """Crea una hoja de detalle para un dispositivo específico."""
