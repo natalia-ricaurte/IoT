@@ -1,6 +1,7 @@
 # Librerías estándar
 import uuid
 from datetime import datetime
+import json
 
 # Librerías de terceros
 import streamlit as st
@@ -16,7 +17,7 @@ from componentes.formularios import inicializar_formulario
 from componentes.pesos_ui import mostrar_interfaz_pesos
 from servicios.ahp_servicio import mostrar_matriz_ahp
 from servicios.exportacion import exportar_resultados_excel
-from servicios.importacion import generar_plantilla_excel, leer_archivo_dispositivos
+from servicios.importacion import generar_plantilla_excel, leer_archivo_dispositivos, generar_plantilla_json
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 from modelo import SostenibilidadIoT
 
@@ -115,6 +116,14 @@ with import_container:
         data=buffer,
         file_name="plantilla_dispositivos.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    # Botón para descargar plantilla JSON
+    buffer_json = generar_plantilla_json()
+    st.download_button(
+        label="Descargar plantilla JSON",
+        data=buffer_json,
+        file_name="plantilla_dispositivos.json",
+        mime="application/json"
     )
 
     # Mostrar uploader solo si mostrar_importar es True

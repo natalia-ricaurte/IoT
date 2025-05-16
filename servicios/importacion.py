@@ -1,6 +1,7 @@
 import pandas as pd
 import io
 from utilidades.constantes import MAPEO_COLUMNAS_IMPORTACION, DESCRIPCION_COLUMNAS_IMPORTACION, ADVERTENCIA_IMPORTACION
+import json
 
 # Esqueleto para la importación de dispositivos desde un archivo CSV, Excel o JSON
 
@@ -138,4 +139,27 @@ def generar_plantilla_excel():
         ws.insert_rows(0)
         ws["A1"] = advertencia
     buffer.seek(0)
-    return buffer 
+    return buffer
+
+def generar_plantilla_json():
+    ejemplo = [
+        {
+            "nombre": "Sensor de temperatura",
+            "potencia_w": 2,
+            "horas_uso_diario": 24,
+            "dias_uso_anio": 365,
+            "peso_kg": 0.1,
+            "vida_util_anios": 5,
+            "energia_renovable_pct": 50,
+            "funcionalidad_1_10": 8,
+            "reciclabilidad_pct": 80,
+            "baterias_vida_util": 1,
+            "peso_bateria_g": 50,
+            "mantenimientos": 2,
+            "componentes_reemplazados": 1,
+            "peso_componente_g": 10,
+            "peso_nuevo_g": 100,
+            "peso_final_g": 90
+        }
+    ]
+    return io.BytesIO(json.dumps(ejemplo, indent=2, ensure_ascii=False).encode('utf-8')) 
