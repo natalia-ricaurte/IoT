@@ -301,6 +301,104 @@ with import_container:
                     st.rerun()
         st.info("Cuando estés listo, podrás añadir los dispositivos individualmente o todos juntos al sistema. Recuerda seleccionar los pesos antes de añadirlos.")
 
+        # Botón para añadir todos los dispositivos importados
+        if st.session_state['dispositivos_importados']:
+            if st.button("Añadir todos los dispositivos importados al sistema", key="btn_add_all_importados"):
+                # Guardar el estado actual de los pesos
+                modo_pesos_actual = st.session_state.modo_pesos_radio
+                pesos_ahp_actual = st.session_state.get('pesos_ahp', None)
+                pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+                pesos_manuales_individuales = {}
+                if modo_pesos_actual == "Ajuste Manual":
+                    for k in NOMBRES_METRICAS:
+                        pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+                nuevos_dispositivos = []
+                for disp in st.session_state['dispositivos_importados']:
+                    nombre = disp.get('nombre', 'Sin nombre')
+                    # Obtener pesos activos
+                    if modo_pesos_actual == "Calcular nuevos pesos":
+                        if pesos_ahp_actual:
+                            pesos_usuario = pesos_ahp_actual
+                            nombre_config_pesos = "Pesos Calculados"
+                            for nombre_config_ahp, config in st.session_state.configuraciones_ahp.items():
+                                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_usuario):
+                                    nombre_config_pesos = f"Configuración Calculada: {nombre_config_ahp}"
+                                    break
+                        else:
+                            pesos_usuario = obtener_pesos_recomendados()
+                            nombre_config_pesos = "Pesos Recomendados"
+                    elif modo_pesos_actual == "Ajuste Manual":
+                        pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+                        pesos_usuario, _ = validar_pesos_manuales(pesos_manuales)
+                        nombre_config_pesos = "Pesos Manuales Personalizados"
+                        for nombre_config_manual, config in st.session_state.pesos_guardados.items():
+                            if to_dict_flat(config) == to_dict_flat(pesos_usuario):
+                                nombre_config_pesos = f"Configuración Manual: {nombre_config_manual}"
+                                break
+                    else:
+                        pesos_usuario = obtener_pesos_recomendados()
+                        nombre_config_pesos = "Pesos Recomendados"
+
+                    sensor = SostenibilidadIoT(nombre)
+                    sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in pesos_usuario.items()}
+                    sensor.calcular_consumo_energia(
+                        float(disp.get('potencia', 0)),
+                        float(disp.get('horas', 0)),
+                        float(disp.get('dias', 0))
+                    )
+                    sensor.calcular_huella_carbono()
+                    sensor.calcular_ewaste(
+                        float(disp.get('peso', 0)),
+                        float(disp.get('vida', 0))
+                    )
+                    sensor.calcular_energia_renovable(float(disp.get('energia_renovable', 0)))
+                    sensor.calcular_eficiencia_energetica(float(disp.get('funcionalidad', 0)))
+                    sensor.calcular_durabilidad(float(disp.get('vida', 0)))
+                    sensor.calcular_reciclabilidad(float(disp.get('reciclabilidad', 0)))
+                    sensor.calcular_indice_mantenimiento(
+                        int(disp.get('B', 0)),
+                        float(disp.get('Wb', 0)),
+                        int(disp.get('M', 0)),
+                        int(disp.get('C', 0)),
+                        float(disp.get('Wc', 0)),
+                        float(disp.get('W0', 0)),
+                        float(disp.get('W', 0))
+                    )
+                    resultado = sensor.calcular_sostenibilidad()
+                    dispositivo_data = disp.copy()
+                    dispositivo_data.update({
+                        "id": str(uuid.uuid4()),
+                        "calculo_realizado": True,
+                        "pesos_utilizados": pesos_usuario,
+                        "resultado": resultado,
+                        "snapshot_form": disp.copy(),
+                        "snapshot_pesos": {
+                            "modo": modo_pesos_actual,
+                            "nombre_configuracion": nombre_config_pesos,
+                            "pesos_manuales": pesos_manuales_actual,
+                            "pesos_ahp": pesos_ahp_actual
+                        }
+                    })
+                    nuevos_dispositivos.append(dispositivo_data)
+                st.session_state.dispositivos.extend(nuevos_dispositivos)
+                st.session_state['dispositivos_importados'] = []
+                if 'mensaje_importacion' in st.session_state:
+                    del st.session_state['mensaje_importacion']
+                for var in ["resultado_global", "fecha_calculo_global"]:
+                    if var in st.session_state:
+                        del st.session_state[var]
+                # Restaurar el estado de los pesos
+                st.session_state.modo_pesos_radio = modo_pesos_actual
+                if pesos_ahp_actual:
+                    st.session_state.pesos_ahp = pesos_ahp_actual
+                if pesos_manuales_actual:
+                    st.session_state.pesos_manuales = pesos_manuales_actual
+                if modo_pesos_actual == "Ajuste Manual":
+                    for k, v in pesos_manuales_individuales.items():
+                        st.session_state[f"peso_manual_{k}"] = v
+                st.success("Todos los dispositivos importados han sido añadidos correctamente al sistema.")
+                st.rerun()
+
 # Inicializar en session_state si no existen
 for k, (default, _) in FORM_KEYS.items():
     if f"form_{k}" not in st.session_state:
