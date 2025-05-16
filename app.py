@@ -81,7 +81,32 @@ with import_container:
         st.session_state.mostrar_importar = False
     
     if st.button("Importar lista de dispositivos"):
+        # Guardar el estado actual de los pesos antes de cambiar mostrar_importar
+        modo_pesos_actual = st.session_state.get('modo_pesos_radio')
+        pesos_ahp_actual = st.session_state.get('pesos_ahp')
+        pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+        
+        # Guardar los valores individuales de los pesos manuales si estamos en modo manual
+        pesos_manuales_individuales = {}
+        if modo_pesos_actual == "Ajuste Manual":
+            for k in NOMBRES_METRICAS:
+                pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+        
+        # Cambiar el estado de mostrar_importar
         st.session_state.mostrar_importar = True
+        
+        # Restaurar el estado de los pesos
+        st.session_state.modo_pesos_radio = modo_pesos_actual
+        if pesos_ahp_actual:
+            st.session_state.pesos_ahp = pesos_ahp_actual
+        if pesos_manuales_actual:
+            st.session_state.pesos_manuales = pesos_manuales_actual
+        
+        # Restaurar los valores individuales de los pesos manuales
+        if modo_pesos_actual == "Ajuste Manual":
+            for k, v in pesos_manuales_individuales.items():
+                st.session_state[f"peso_manual_{k}"] = v
+        
         st.rerun()
     
     buffer = generar_plantilla_excel()
@@ -116,6 +141,26 @@ with import_container:
                         del st.session_state['importar_csv']
                     st.session_state['mostrar_importar'] = False
                     st.session_state['mensaje_importacion'] = f"✅ Archivo '{archivo_import.name}' leído correctamente. Se encontraron {len(df_import)} dispositivos.\n\nAhora puedes añadirlos individualmente o todos al sistema usando los botones correspondientes."
+
+                    # --- GUARDAR Y RESTAURAR ESTADO DE PESOS ---
+                    modo_pesos_actual = st.session_state.get('modo_pesos_radio')
+                    pesos_ahp_actual = st.session_state.get('pesos_ahp')
+                    pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+                    pesos_manuales_individuales = {}
+                    if modo_pesos_actual == "Ajuste Manual":
+                        for k in NOMBRES_METRICAS:
+                            pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+                    # Restaurar
+                    st.session_state.modo_pesos_radio = modo_pesos_actual
+                    if pesos_ahp_actual:
+                        st.session_state.pesos_ahp = pesos_ahp_actual
+                    if pesos_manuales_actual:
+                        st.session_state.pesos_manuales = pesos_manuales_actual
+                    if modo_pesos_actual == "Ajuste Manual":
+                        for k, v in pesos_manuales_individuales.items():
+                            st.session_state[f"peso_manual_{k}"] = v
+                    # --- FIN RESTAURAR ESTADO DE PESOS ---
+
                     st.rerun()
                 else:
                     st.session_state['dispositivos_importados'] = []
