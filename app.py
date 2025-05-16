@@ -631,3 +631,23 @@ if "resultado_global" in st.session_state:
         file_name=f"sostenibilidad_iot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+# --- PIE DE PÁGINA ---
+st.markdown(
+    """
+    <hr>
+    <div style='text-align: center;'>
+        <a href='https://github.com/natalia-ricaurte/IoT' target='_blank' style='margin-right:30px;'>
+            <img src='https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png' width='40' style='vertical-align:middle; margin-right:10px;'/>
+            <span style='font-size:18px; vertical-align:middle;'>Repositorio en GitHub</span>
+        </a>
+        <a href='https://sistemas.uniandes.edu.co/es/' target='_blank' style='margin-left:30px;'>
+            <img src='https://upload.wikimedia.org/wikipedia/commons/4/47/University_of_Los_Andes_logo.svg' width='40' style='vertical-align:middle; margin-right:10px;'/>
+            <span style='font-size:18px; vertical-align:middle;'>Universidad de los Andes</span>
+        </a>
+        <br>
+        <span style='font-size:12px; color:gray;'>© 2024 Juan Camilo Pacheco, Natalia Andrea Ricaurte, Laura Valentina Lara</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
