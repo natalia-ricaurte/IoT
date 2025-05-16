@@ -8,7 +8,7 @@ import pandas as pd
 import io
 
 # Módulos locales
-from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS
+from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS, MAPEO_COLUMNAS_IMPORTACION, ADVERTENCIA_IMPORTACION, GUIA_USO_DASHBOARD
 from utilidades.manejo_datos import to_dict_flat
 from utilidades.estado import inicializar_estado, reiniciar_estado
 from componentes.dispositivos import mostrar_dispositivo, mostrar_resultados_globales
@@ -19,6 +19,29 @@ from servicios.exportacion import exportar_resultados_excel
 from servicios.importacion import generar_plantilla_excel, leer_archivo_dispositivos
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 from modelo import SostenibilidadIoT
+
+# --- FUNCIÓN AUXILIAR PARA OBTENER VALOR DE CAMPO IMPORTADO ---
+def obtener_valor_dispositivo(disp, nombre_interno):
+    claves_posibles = [k for k, v in MAPEO_COLUMNAS_IMPORTACION.items() if v == nombre_interno]
+    claves_posibles.append(nombre_interno)
+    for clave in claves_posibles:
+        if clave in disp:
+            return disp[clave]
+    return 'N/A'
+
+# --- FUNCIÓN AUXILIAR PARA EXTRAER VALOR NUMÉRICO DE PESO ---
+def extraer_valor_peso(v):
+    if isinstance(v, dict):
+        for val in v.values():
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                continue
+        raise ValueError("No se encontró valor numérico en el peso.")
+    try:
+        return float(v)
+    except (ValueError, TypeError):
+        raise ValueError(f"No se pudo convertir el valor {v} a número.")
 
 # --- INICIALIZACIÓN DE LA APLICACIÓN ---
 st.set_page_config(page_title="Dashboard Sostenibilidad IoT", layout="wide")
@@ -48,68 +71,7 @@ if st.button("Reiniciar"):
 
 st.markdown("## Descripción de Métricas y Guía de Uso")
 with st.expander("Ver detalles y guía de uso"):
-    st.markdown("""
-    ### Métricas clave del modelo
-    **Métricas de sostenibilidad evaluadas:**
-    1. **CE - Consumo de Energía:** kWh anuales usados por el dispositivo.
-    2. **HC - Huella de Carbono:** kg de CO₂eq emitidos.
-    3. **EW - E-waste:** kg de residuos electrónicos generados por año.
-    4. **ER - Energía Renovable:** Porcentaje de energía limpia usada.
-    5. **EE - Eficiencia Energética:** Relación funcionalidad / consumo.
-    6. **DP - Durabilidad del Producto:** Vida útil esperada.
-    7. **RC - Reciclabilidad:** Porcentaje de materiales reciclables.
-    8. **IM - Mantenimiento:** Impacto de baterías, reemplazos y desgaste.
-
-    ---
-
-    ### Guía rápida de uso del dashboard
-    1. **Define los pesos de las métricas**
-       - Selecciona el método de asignación de pesos en la columna derecha antes de ingresar dispositivos.
-       - Puedes usar los pesos recomendados, ajustarlos manualmente o calcular nuevos pesos mediante comparación por pares.
-       - **Pesos Recomendados:** Basados en análisis y alineación con ODS.
-       - **Ajuste Manual:** Permite personalizar los pesos y guardar configuraciones personalizadas.
-       - **Pesos Calculados:** Utiliza la matriz de comparación por pares y permite guardar diferentes configuraciones.
-       - **Nota:** Los pesos activos al momento de añadir un dispositivo serán los que se usen para su cálculo. El nombre de la configuración utilizada se guarda y se muestra en los resultados y exportaciones.
-
-    2. **Ingresa las características de tus dispositivos IoT**
-       - Completa el formulario y pulsa **'Añadir dispositivo'** para guardar cada uno.
-       - Al añadir un nuevo dispositivo, los resultados globales previos se eliminan automáticamente. Deberás recalcular el índice global para ver los resultados actualizados.
-
-    3. **Gestiona tu lista de dispositivos**
-       - Puedes ver los detalles completos de cada dispositivo pulsando **'Mostrar detalles'**.
-       - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo, junto con el nombre de la configuración de pesos aplicada.
-       - Para eliminar un dispositivo, marca la casilla **'Eliminar dispositivo'** y confirma la acción con el botón correspondiente. Al eliminar cualquier dispositivo, los resultados globales se eliminan y deberás recalcular.
-
-    4. **Calcula y analiza los resultados**
-       - Pulsa **'Calcular Índice de Sostenibilidad'** para ver los resultados individuales y globales.
-       - El índice global y los detalles del sistema solo reflejan los dispositivos actualmente en la lista.
-
-    5. **Consulta los detalles del sistema**
-       - En la sección de resultados globales, expande **'Detalles del sistema'** para ver:
-         - Cantidad total de dispositivos evaluados.
-         - Desviación estándar de los índices individuales.
-         - Fecha y hora del cálculo global.
-         - Nota sobre comparabilidad si los dispositivos fueron evaluados con diferentes pesos.
-         - Pesos utilizados para el cálculo global y nombre de la configuración aplicada.
-         - Lista de dispositivos incluidos y su índice individual.
-
-    6. **Exporta los resultados completos a Excel**
-       - Tras calcular el índice global, utiliza el botón **'Descargar Resultados Completos'** para exportar toda la información a un archivo Excel profesional.
-       - El archivo incluye:
-         - Resumen general con índice global, fecha, configuración de pesos y gráfico radar.
-         - Tabla de pesos utilizados para el cálculo global.
-         - Lista de dispositivos y sus índices.
-         - Hojas de detalle para cada dispositivo, con datos de entrada, nombre de la configuración de pesos utilizada, tabla de pesos y gráfico radar individual.
-
-    ---
-
-    **Consejos y advertencias:**
-    - Si cambias los pesos o la lista de dispositivos, recuerda recalcular el índice global para obtener resultados actualizados.
-    - Si los dispositivos fueron evaluados con diferentes configuraciones de pesos, los índices individuales pueden no ser directamente comparables.
-    - El dashboard elimina automáticamente los resultados globales al añadir o eliminar dispositivos para evitar mostrar información desactualizada.
-    - Puedes guardar y cargar diferentes configuraciones de pesos tanto para el ajuste manual como para los pesos calculados mediante comparación por pares.
-    - El nombre de la configuración de pesos utilizada se guarda y se muestra en todos los resultados y exportaciones para máxima trazabilidad.
-    """)
+    st.markdown(GUIA_USO_DASHBOARD)
 
 # --- SECCIÓN DE IMPORTACIÓN DE DISPOSITIVOS ---
 st.markdown("## Importar lista de dispositivos")
@@ -175,19 +137,9 @@ with import_container:
         for idx, disp in enumerate(st.session_state['dispositivos_importados']):
             with st.container():
                 col1, col2 = st.columns([5, 1])
-                def buscar_clave(dic, palabras_clave):
-                    for palabra in palabras_clave:
-                        for k in dic:
-                            k_normal = k.replace('_', '').replace(' ', '').lower()
-                            palabra_normal = palabra.replace('_', '').replace(' ', '').lower()
-                            if palabra_normal in k_normal:
-                                return dic[k]
-                    return 'N/A'
-                nombre = buscar_clave(disp, ['nombre'])
-                potencia = buscar_clave(disp, ['potencia'])
-                vida = buscar_clave(disp, ['vida'])
-                if not nombre:
-                    nombre = 'Sin nombre'
+                nombre = disp.get('nombre', 'Sin nombre')
+                potencia = disp.get('potencia', 'N/A')
+                vida = disp.get('vida', 'N/A')
                 col1.markdown(f"**{nombre}** | Potencia: {potencia} W | Vida útil: {vida} años")
                 key_exp = f"expandir_importado_{idx}"
                 if key_exp not in st.session_state:
@@ -198,10 +150,16 @@ with import_container:
                 if st.session_state[key_exp]:
                     st.write(disp)
                 if st.button("Añadir dispositivo al sistema", key=f"btn_add_import_{idx}"):
+                    print('ANTES DE AÑADIR IMPORTADO: modo_pesos_radio =', st.session_state.get('modo_pesos_radio'))
+                    # Guardar el estado actual de los pesos
+                    modo_pesos_actual = st.session_state.modo_pesos_radio
+                    pesos_ahp_actual = st.session_state.get('pesos_ahp', None)
+                    pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+                    
                     # Obtener pesos activos
-                    if st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
-                        if 'pesos_ahp' in st.session_state:
-                            pesos_usuario = st.session_state.pesos_ahp
+                    if modo_pesos_actual == "Calcular nuevos pesos":
+                        if pesos_ahp_actual:
+                            pesos_usuario = pesos_ahp_actual
                             nombre_config_pesos = "Pesos Calculados"
                             for nombre_config_ahp, config in st.session_state.configuraciones_ahp.items():
                                 if to_dict_flat(config['pesos']) == to_dict_flat(pesos_usuario):
@@ -210,7 +168,7 @@ with import_container:
                         else:
                             pesos_usuario = obtener_pesos_recomendados()
                             nombre_config_pesos = "Pesos Recomendados"
-                    elif st.session_state.modo_pesos_radio == "Ajuste Manual":
+                    elif modo_pesos_actual == "Ajuste Manual":
                         pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
                         pesos_usuario, _ = validar_pesos_manuales(pesos_manuales)
                         nombre_config_pesos = "Pesos Manuales Personalizados"
@@ -221,36 +179,31 @@ with import_container:
                     else:
                         pesos_usuario = obtener_pesos_recomendados()
                         nombre_config_pesos = "Pesos Recomendados"
+
                     sensor = SostenibilidadIoT(nombre)
-                    def extraer(dic, palabras):
-                        val = buscar_clave(dic, palabras)
-                        try:
-                            return float(val)
-                        except Exception:
-                            return 0.0
-                    sensor.pesos = {k: float(v) for k, v in pesos_usuario.items()}
+                    sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in pesos_usuario.items()}
                     sensor.calcular_consumo_energia(
-                        extraer(disp, ['potencia']),
-                        extraer(disp, ['horas']),
-                        extraer(disp, ['dias'])
+                        float(disp.get('potencia', 0)),
+                        float(disp.get('horas', 0)),
+                        float(disp.get('dias', 0))
                     )
                     sensor.calcular_huella_carbono()
                     sensor.calcular_ewaste(
-                        extraer(disp, ['peso']),
-                        extraer(disp, ['vida'])
+                        float(disp.get('peso', 0)),
+                        float(disp.get('vida', 0))
                     )
-                    sensor.calcular_energia_renovable(extraer(disp, ['renovable', 'energia_renovable', 'porcentaje']))
-                    sensor.calcular_eficiencia_energetica(extraer(disp, ['funcionalidad']))
-                    sensor.calcular_durabilidad(extraer(disp, ['vida']))
-                    sensor.calcular_reciclabilidad(extraer(disp, ['reciclabilidad']))
+                    sensor.calcular_energia_renovable(float(disp.get('energia_renovable', 0)))
+                    sensor.calcular_eficiencia_energetica(float(disp.get('funcionalidad', 0)))
+                    sensor.calcular_durabilidad(float(disp.get('vida', 0)))
+                    sensor.calcular_reciclabilidad(float(disp.get('reciclabilidad', 0)))
                     sensor.calcular_indice_mantenimiento(
-                        extraer(disp, ['baterias', 'B']),
-                        extraer(disp, ['bateria', 'Wb']),
-                        extraer(disp, ['mantenimientos', 'M']),
-                        extraer(disp, ['componentes', 'C']),
-                        extraer(disp, ['componente', 'Wc']),
-                        extraer(disp, ['nuevo', 'W0']),
-                        extraer(disp, ['final', 'W'])
+                        int(disp.get('B', 0)),
+                        float(disp.get('Wb', 0)),
+                        int(disp.get('M', 0)),
+                        int(disp.get('C', 0)),
+                        float(disp.get('Wc', 0)),
+                        float(disp.get('W0', 0)),
+                        float(disp.get('W', 0))
                     )
                     resultado = sensor.calcular_sostenibilidad()
                     dispositivo_data = disp.copy()
@@ -261,10 +214,10 @@ with import_container:
                         "resultado": resultado,
                         "snapshot_form": disp.copy(),
                         "snapshot_pesos": {
-                            "modo": st.session_state.modo_pesos_radio,
+                            "modo": modo_pesos_actual,
                             "nombre_configuracion": nombre_config_pesos,
-                            "pesos_manuales": st.session_state.get("pesos_manuales", {}),
-                            "pesos_ahp": st.session_state.get("pesos_ahp", {})
+                            "pesos_manuales": pesos_manuales_actual,
+                            "pesos_ahp": pesos_ahp_actual
                         }
                     })
                     st.session_state.dispositivos.append(dispositivo_data)
@@ -274,9 +227,18 @@ with import_container:
                             del st.session_state[var]
                     if 'mensaje_importacion' in st.session_state:
                         del st.session_state['mensaje_importacion']
+                    
+                    # Restaurar el estado de los pesos
+                    st.session_state.modo_pesos_radio = modo_pesos_actual
+                    if pesos_ahp_actual:
+                        st.session_state.pesos_ahp = pesos_ahp_actual
+                    if pesos_manuales_actual:
+                        st.session_state.pesos_manuales = pesos_manuales_actual
+                    
+                    print('DESPUÉS DE AÑADIR IMPORTADO: modo_pesos_radio =', st.session_state.get('modo_pesos_radio'))
                     st.success(f"Dispositivo '{nombre}' añadido correctamente al sistema.")
                     st.rerun()
-        st.info("Cuando estés listo, podrás añadir los dispositivos individualmente o todos juntos al sistema.")
+        st.info("Cuando estés listo, podrás añadir los dispositivos individualmente o todos juntos al sistema. Recuerda seleccionar los pesos antes de añadirlos.")
 
 # Inicializar en session_state si no existen
 for k, (default, _) in FORM_KEYS.items():
@@ -427,7 +389,7 @@ else:
                 # Si no existe resultado, recalcularlo usando los pesos guardados
                 if "resultado" not in dispositivo or not dispositivo["calculo_realizado"]:
                     sensor = SostenibilidadIoT(dispositivo["nombre"])
-                    sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in dispositivo["pesos_utilizados"].items()}
+                    sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in dispositivo["pesos_utilizados"].items()}
                     sensor.calcular_consumo_energia(dispositivo["potencia"], dispositivo["horas"], dispositivo["dias"])
                     sensor.calcular_huella_carbono()
                     sensor.calcular_ewaste(dispositivo["peso"], dispositivo["vida"])
@@ -477,7 +439,7 @@ if st.session_state.dispositivos:
         # Si no existe resultado, recalcularlo usando los pesos guardados
         if "resultado" not in disp or not disp["calculo_realizado"]:
             sensor = SostenibilidadIoT(disp["nombre"])
-            sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in disp["pesos_utilizados"].items()}
+            sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in disp["pesos_utilizados"].items()}
             sensor.calcular_consumo_energia(disp["potencia"], disp["horas"], disp["dias"])
             sensor.calcular_huella_carbono()
             sensor.calcular_ewaste(disp["peso"], disp["vida"])
@@ -507,7 +469,7 @@ if st.session_state.dispositivos:
 # --- MOSTRAR RESULTADOS GLOBALES ---
 mostrar_resultados_globales()
 
-# Botón de descarga directo
+    # Botón de descarga directo
 if "resultado_global" in st.session_state:
     excel_file = exportar_resultados_excel()
     st.download_button(

@@ -28,4 +28,176 @@ FORM_KEYS = {
     'Wc': (20, "Peso promedio de cada componente reemplazado en gramos."),
     'W0': (200, "Peso total del dispositivo cuando es nuevo."),
     'W': (180, "Peso final del dispositivo después del uso.")
-} 
+}
+
+# Nombres simplificados de columnas y su mapeo a nombres internos
+MAPEO_COLUMNAS_IMPORTACION = {
+    # nombre de columna simplificado : nombre interno
+    "nombre": "nombre",
+    "potencia_w": "potencia",
+    "horas_uso_diario": "horas",
+    "dias_uso_anio": "dias",
+    "peso_kg": "peso",
+    "vida_util_anios": "vida",
+    "energia_renovable_pct": "energia_renovable",
+    "funcionalidad_1_10": "funcionalidad",
+    "reciclabilidad_pct": "reciclabilidad",
+    "baterias_vida_util": "B",
+    "peso_bateria_g": "Wb",
+    "mantenimientos": "M",
+    "componentes_reemplazados": "C",
+    "peso_componente_g": "Wc",
+    "peso_nuevo_g": "W0",
+    "peso_final_g": "W"
+}
+
+# Descripciones y unidades para cada campo de la plantilla
+DESCRIPCION_COLUMNAS_IMPORTACION = {
+    "nombre": "Nombre descriptivo del dispositivo IoT.",
+    "potencia_w": "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento.",
+    "horas_uso_diario": "Cantidad de horas al día que el dispositivo está en uso.",
+    "dias_uso_anio": "Número de días al año que el dispositivo opera.",
+    "peso_kg": "Peso total del dispositivo en kilogramos.",
+    "vida_util_anios": "Duración esperada del dispositivo antes de desecharse o reemplazarse (años).",
+    "energia_renovable_pct": "Porcentaje de energía que proviene de fuentes renovables.",
+    "funcionalidad_1_10": "Nivel de funcionalidad y utilidad que ofrece el dispositivo (1-10).",
+    "reciclabilidad_pct": "Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil.",
+    "baterias_vida_util": "Cantidad de baterías necesarias durante toda la vida útil del dispositivo.",
+    "peso_bateria_g": "Peso de cada batería en gramos.",
+    "mantenimientos": "Número de veces que el dispositivo requiere mantenimiento.",
+    "componentes_reemplazados": "Número de componentes reemplazados en mantenimientos.",
+    "peso_componente_g": "Peso promedio de cada componente reemplazado en gramos.",
+    "peso_nuevo_g": "Peso total del dispositivo cuando es nuevo (gramos).",
+    "peso_final_g": "Peso final del dispositivo después del uso (gramos)."
+}
+
+# Mapeo de nombres de columnas del archivo importado a nombres internos
+MAPEO_COLUMNAS_IMPORTACION = {
+    # Nombres exactos de la plantilla (orden y formato idéntico)
+    "Nombre del dispositivo": "nombre",
+    "Potencia (W)": "potencia",
+    "Horas uso diario": "horas",
+    "Días uso/año": "dias",
+    "Peso dispositivo (kg)": "peso",
+    "Vida útil (años)": "vida",
+    "Energía renovable (%)": "energia_renovable",
+    "Funcionalidad (1-10)": "funcionalidad",
+    "Reciclabilidad (%)": "reciclabilidad",
+    "Baterías vida útil": "B",
+    "Peso batería (g)": "Wb",
+    "Mantenimientos": "M",
+    "Componentes reemplazados": "C",
+    "Peso componente (g)": "Wc",
+    "Peso nuevo (g)": "W0",
+    "Peso final (g)": "W",
+    
+    # Variaciones comunes
+    "Nombre": "nombre",
+    "Potencia": "potencia",
+    "Horas": "horas",
+    "Días": "dias",
+    "Peso": "peso",
+    "Vida": "vida",
+    "Energía Renovable": "energia_renovable",
+    "Funcionalidad": "funcionalidad",
+    "Reciclabilidad": "reciclabilidad",
+    "Baterías": "B",
+    "Peso Batería": "Wb",
+    "Mantenimiento": "M",
+    "Componentes": "C",
+    "Peso Componente": "Wc",
+    "Peso Inicial": "W0",
+    "Peso Final": "W",
+    
+    # Nombres en inglés
+    "Device Name": "nombre",
+    "Power (W)": "potencia",
+    "Daily Hours": "horas",
+    "Days per Year": "dias",
+    "Weight (kg)": "peso",
+    "Lifetime (years)": "vida",
+    "Renewable Energy (%)": "energia_renovable",
+    "Functionality (1-10)": "funcionalidad",
+    "Recyclability (%)": "reciclabilidad",
+    "Batteries": "B",
+    "Battery Weight (g)": "Wb",
+    "Maintenance": "M",
+    "Components": "C",
+    "Component Weight (g)": "Wc",
+    "Initial Weight (g)": "W0",
+    "Final Weight (g)": "W"
+}
+
+ADVERTENCIA_IMPORTACION = (
+    "IMPORTANTE: No cambies los nombres de las columnas para evitar errores de importación. "
+    "El sistema solo acepta los nombres exactos de la plantilla, sin variantes ni traducciones. "
+    "No cambies el orden de las hojas ni elimines la hoja de datos (debe ser la primera hoja del archivo). "
+    "Puedes renombrar el archivo, pero asegúrate de mantener la estructura de la plantilla."
+)
+
+GUIA_USO_DASHBOARD = f"""
+### Métricas clave del modelo
+**Métricas de sostenibilidad evaluadas:**
+1. **CE - Consumo de Energía:** kWh anuales usados por el dispositivo.
+2. **HC - Huella de Carbono:** kg de CO₂eq emitidos.
+3. **EW - E-waste:** kg de residuos electrónicos generados por año.
+4. **ER - Energía Renovable:** Porcentaje de energía limpia usada.
+5. **EE - Eficiencia Energética:** Relación funcionalidad / consumo.
+6. **DP - Durabilidad del Producto:** Vida útil esperada.
+7. **RC - Reciclabilidad:** Porcentaje de materiales reciclables.
+8. **IM - Mantenimiento:** Impacto de baterías, reemplazos y desgaste.
+
+---
+
+### Guía rápida de uso del dashboard
+1. **Define los pesos de las métricas**
+   - Selecciona el método de asignación de pesos en la columna derecha antes de ingresar dispositivos.
+   - Puedes usar los pesos recomendados, ajustarlos manualmente o calcular nuevos pesos mediante comparación por pares.
+   - **Pesos Recomendados:** Basados en análisis y alineación con ODS.
+   - **Ajuste Manual:** Permite personalizar los pesos y guardar configuraciones personalizadas.
+   - **Pesos Calculados:** Utiliza la matriz de comparación por pares y permite guardar diferentes configuraciones.
+   - **Nota:** Los pesos activos al momento de añadir un dispositivo serán los que se usen para su cálculo. El nombre de la configuración utilizada se guarda y se muestra en los resultados y exportaciones.
+
+2. **Ingresa las características de tus dispositivos IoT**
+   - Puedes completar el formulario manualmente **o importar una lista de dispositivos usando la plantilla**.
+   - {ADVERTENCIA_IMPORTACION}
+   - La plantilla incluye una hoja de ayuda con la descripción y unidad de cada campo.
+   - Sube el archivo en formato Excel, CSV o JSON y revisa los datos antes de añadirlos al sistema.
+   - Tras importar, puedes añadir los dispositivos individualmente o todos juntos.
+   - Al añadir un nuevo dispositivo, los resultados globales previos se eliminan automáticamente. Deberás recalcular el índice global para ver los resultados actualizados.
+
+3. **Gestiona tu lista de dispositivos**
+   - Puedes ver los detalles completos de cada dispositivo pulsando **'Mostrar detalles'**.
+   - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo, junto con el nombre de la configuración de pesos aplicada.
+   - Para eliminar un dispositivo, marca la casilla **'Eliminar dispositivo'** y confirma la acción con el botón correspondiente. Al eliminar cualquier dispositivo, los resultados globales se eliminan y deberás recalcular.
+
+4. **Calcula y analiza los resultados**
+   - Pulsa **'Calcular Índice de Sostenibilidad'** para ver los resultados individuales y globales.
+   - El índice global y los detalles del sistema solo reflejan los dispositivos actualmente en la lista.
+
+5. **Consulta los detalles del sistema**
+   - En la sección de resultados globales, expande **'Detalles del sistema'** para ver:
+     - Cantidad total de dispositivos evaluados.
+     - Desviación estándar de los índices individuales.
+     - Fecha y hora del cálculo global.
+     - Nota sobre comparabilidad si los dispositivos fueron evaluados con diferentes pesos.
+     - Pesos utilizados para el cálculo global y nombre de la configuración aplicada.
+     - Lista de dispositivos incluidos y su índice individual.
+
+6. **Exporta los resultados completos a Excel**
+   - Tras calcular el índice global, utiliza el botón **'Descargar Resultados Completos'** para exportar toda la información a un archivo Excel profesional.
+   - El archivo incluye:
+     - Resumen general con índice global, fecha, configuración de pesos y gráfico radar.
+     - Tabla de pesos utilizados para el cálculo global.
+     - Lista de dispositivos y sus índices.
+     - Hojas de detalle para cada dispositivo, con datos de entrada, nombre de la configuración de pesos utilizada, tabla de pesos y gráfico radar individual.
+
+---
+
+**Consejos y advertencias:**
+- Si cambias los pesos o la lista de dispositivos, recuerda recalcular el índice global para obtener resultados actualizados.
+- Si los dispositivos fueron evaluados con diferentes configuraciones de pesos, los índices individuales pueden no ser directamente comparables.
+- El dashboard elimina automáticamente los resultados globales al añadir o eliminar dispositivos para evitar mostrar información desactualizada.
+- Puedes guardar y cargar diferentes configuraciones de pesos tanto para el ajuste manual como para los pesos calculados mediante comparación por pares.
+- El nombre de la configuración de pesos utilizada se guarda y se muestra en todos los resultados y exportaciones para máxima trazabilidad.
+""" 

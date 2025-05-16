@@ -1,11 +1,33 @@
 import pandas as pd
 import io
+from utilidades.constantes import MAPEO_COLUMNAS_IMPORTACION, DESCRIPCION_COLUMNAS_IMPORTACION, ADVERTENCIA_IMPORTACION
 
 # Esqueleto para la importación de dispositivos desde un archivo CSV, Excel o JSON
+
+# Mapeo fijo: nombres de la plantilla -> nombres internos
+MAPEO_COLUMNAS_PLANTILLA = {
+    "nombre": "nombre",
+    "potencia_w": "potencia",
+    "horas_uso_diario": "horas",
+    "dias_uso_anio": "dias",
+    "peso_kg": "peso",
+    "vida_util_anios": "vida",
+    "energia_renovable_pct": "energia_renovable",
+    "funcionalidad_1_10": "funcionalidad",
+    "reciclabilidad_pct": "reciclabilidad",
+    "baterias_vida_util": "B",
+    "peso_bateria_g": "Wb",
+    "mantenimientos": "M",
+    "componentes_reemplazados": "C",
+    "peso_componente_g": "Wc",
+    "peso_nuevo_g": "W0",
+    "peso_final_g": "W"
+}
 
 def leer_archivo_dispositivos(archivo):
     """
     Lee un archivo de dispositivos en formato CSV, Excel o JSON y devuelve un DataFrame.
+    Renombra las columnas de la plantilla a los nombres internos estándar.
     """
     nombre = archivo.name.lower()
     if nombre.endswith('.csv'):
@@ -16,6 +38,9 @@ def leer_archivo_dispositivos(archivo):
         df = pd.read_json(archivo)
     else:
         raise ValueError("Formato de archivo no soportado. Usa CSV, Excel o JSON.")
+    # Renombrar columnas usando el mapeo fijo
+    columnas_mapeadas = {col: MAPEO_COLUMNAS_PLANTILLA[col] for col in df.columns if col in MAPEO_COLUMNAS_PLANTILLA}
+    df = df.rename(columns=columnas_mapeadas)
     return df
 
 
@@ -31,10 +56,9 @@ def validar_y_procesar_dispositivos(df):
     Devuelve una lista de diccionarios de dispositivos válidos y una lista de errores.
     """
     columnas_requeridas = [
-        "nombre","potencia_watt","horas_uso_diario","dias_uso_anual","peso_kg","vida_util_anios",
-        "energia_renovable_porcentaje","funcionalidad","reciclabilidad_porcentaje","baterias_vida_util",
-        "peso_bateria_gramos","mantenimientos","componentes_reemplazados","peso_componente_gramos",
-        "peso_nuevo_gramos","peso_final_gramos"
+        "nombre", "potencia", "horas", "dias", "peso", "vida",
+        "energia_renovable", "funcionalidad", "reciclabilidad", "B",
+        "Wb", "M", "C", "Wc", "W0", "W"
     ]
     errores = []
     dispositivos = []
@@ -50,21 +74,21 @@ def validar_y_procesar_dispositivos(df):
         try:
             dispositivo = {
                 "nombre": str(row["nombre"]),
-                "potencia": to_float(row["potencia_watt"]),
-                "horas": to_float(row["horas_uso_diario"]),
-                "dias": int(row["dias_uso_anual"]),
-                "peso": to_float(row["peso_kg"]),
-                "vida": to_float(row["vida_util_anios"]),
-                "energia_renovable": to_float(row["energia_renovable_porcentaje"]),
-                "funcionalidad": to_float(row["funcionalidad"]),
-                "reciclabilidad": to_float(row["reciclabilidad_porcentaje"]),
-                "B": int(row["baterias_vida_util"]),
-                "Wb": to_float(row["peso_bateria_gramos"]),
-                "M": int(row["mantenimientos"]),
-                "C": int(row["componentes_reemplazados"]),
-                "Wc": to_float(row["peso_componente_gramos"]),
-                "W0": to_float(row["peso_nuevo_gramos"]),
-                "W": to_float(row["peso_final_gramos"])
+                "potencia": float(row["potencia"]),
+                "horas": float(row["horas"]),
+                "dias": int(row["dias"]),
+                "peso": float(row["peso"]),
+                "vida": float(row["vida"]),
+                "energia_renovable": float(row["energia_renovable"]),
+                "funcionalidad": float(row["funcionalidad"]),
+                "reciclabilidad": float(row["reciclabilidad"]),
+                "B": int(row["B"]),
+                "Wb": float(row["Wb"]),
+                "M": int(row["M"]),
+                "C": int(row["C"]),
+                "Wc": float(row["Wc"]),
+                "W0": float(row["W0"]),
+                "W": float(row["W"])
             }
             dispositivos.append(dispositivo)
         except Exception as e:
@@ -77,18 +101,41 @@ def generar_plantilla_excel():
     Genera y retorna un buffer con la plantilla de dispositivos en formato Excel (.xlsx).
     """
     columnas = [
-        "nombre","potencia_watt","horas_uso_diario","dias_uso_anual","peso_kg","vida_util_anios",
-        "energia_renovable_porcentaje","funcionalidad","reciclabilidad_porcentaje","baterias_vida_util",
-        "peso_bateria_gramos","mantenimientos","componentes_reemplazados","peso_componente_gramos",
-        "peso_nuevo_gramos","peso_final_gramos"
+        "nombre",
+        "potencia_w",
+        "horas_uso_diario",
+        "dias_uso_anio",
+        "peso_kg",
+        "vida_util_anios",
+        "energia_renovable_pct",
+        "funcionalidad_1_10",
+        "reciclabilidad_pct",
+        "baterias_vida_util",
+        "peso_bateria_g",
+        "mantenimientos",
+        "componentes_reemplazados",
+        "peso_componente_g",
+        "peso_nuevo_g",
+        "peso_final_g"
     ]
     datos_ejemplo = [
-        ["Sensor de temperatura",2,24,365,0.1,5,30,8,65,2,50,1,2,20,200,180],
-        ["Actuador de válvula",5,12,300,0.2,7,50,9,70,3,60,2,1,25,250,230]
+        ["Sensor de temperatura", 2, 24, 365, 0.1, 5, 30, 8, 65, 2, 50, 1, 2, 20, 200, 180],
+        ["Actuador de válvula", 5, 12, 300, 0.2, 7, 50, 9, 70, 3, 60, 2, 1, 25, 250, 230]
     ]
     df_plantilla = pd.DataFrame(datos_ejemplo, columns=columnas)
+    # Crear hoja de ayuda
+    ayuda = [
+        [col, DESCRIPCION_COLUMNAS_IMPORTACION.get(col, "")] for col in columnas
+    ]
+    df_ayuda = pd.DataFrame(ayuda, columns=["Columna", "Descripción y unidad"])
+    advertencia = ADVERTENCIA_IMPORTACION
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
         df_plantilla.to_excel(writer, index=False, sheet_name="Plantilla")
+        df_ayuda.to_excel(writer, index=False, sheet_name="Ayuda")
+        # Escribir advertencia en la primera celda de la hoja de ayuda
+        ws = writer.sheets["Ayuda"]
+        ws.insert_rows(0)
+        ws["A1"] = advertencia
     buffer.seek(0)
     return buffer 

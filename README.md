@@ -63,21 +63,54 @@ streamlit run app.py
    - URL local: http://localhost:8501
    - URL de red: http://[TU_IP]:8501
 
+## Importación de Dispositivos
+
+Puedes importar una lista de dispositivos desde un archivo Excel, CSV o JSON usando una plantilla robusta y fácil de usar.
+
+- Descarga la plantilla desde el dashboard (botón "Descargar plantilla Excel").
+- **No cambies los nombres de las columnas**: el sistema solo acepta los nombres exactos de la plantilla, sin variantes ni traducciones.
+- La plantilla incluye una hoja de ayuda con la descripción y unidad de cada campo, y una advertencia destacada.
+- Los nombres de las columnas son cortos, en minúsculas, sin tildes ni espacios, y compatibles con cualquier sistema:
+
+| Columna                | Descripción y unidad                                                        |
+|------------------------|-----------------------------------------------------------------------------|
+| nombre                 | Nombre descriptivo del dispositivo IoT.                                     |
+| potencia_w             | Potencia eléctrica en vatios (W) del dispositivo.                           |
+| horas_uso_diario       | Cantidad de horas al día que el dispositivo está en uso.                     |
+| dias_uso_anio          | Número de días al año que el dispositivo opera.                             |
+| peso_kg                | Peso total del dispositivo en kilogramos.                                   |
+| vida_util_anios        | Duración esperada del dispositivo antes de desecharse o reemplazarse (años).|
+| energia_renovable_pct  | Porcentaje de energía que proviene de fuentes renovables.                   |
+| funcionalidad_1_10     | Nivel de funcionalidad y utilidad que ofrece el dispositivo (1-10).         |
+| reciclabilidad_pct     | Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil.   |
+| baterias_vida_util     | Cantidad de baterías necesarias durante toda la vida útil del dispositivo.   |
+| peso_bateria_g         | Peso de cada batería en gramos.                                             |
+| mantenimientos         | Número de veces que el dispositivo requiere mantenimiento.                   |
+| componentes_reemplazados| Número de componentes reemplazados en mantenimientos.                      |
+| peso_componente_g      | Peso promedio de cada componente reemplazado en gramos.                     |
+| peso_nuevo_g           | Peso total del dispositivo cuando es nuevo (gramos).                        |
+| peso_final_g           | Peso final del dispositivo después del uso (gramos).                        |
+
+- Puedes importar archivos en formato **.xlsx, .csv o .json**.
+- El sistema valida automáticamente los datos y muestra advertencias si falta algún campo obligatorio.
+- Tras importar, puedes añadir los dispositivos individualmente o todos juntos al sistema.
+- El flujo de importación es robusto: el uploader desaparece tras importar, y solo se muestra la lista de dispositivos pendientes de añadir.
+- Puedes cancelar la importación en cualquier momento y limpiar el estado.
+
 ## Guía Rápida
 
 1. **Definir Pesos**:
-   - Seleccione el método de asignación de pesos
-   - Ajuste los pesos según sus necesidades
-   - Guarde configuraciones personalizadas
+   - Selecciona el método de asignación de pesos (recomendados, manual o comparación por pares).
+   - Ajusta y guarda configuraciones personalizadas si lo deseas.
 
 2. **Ingresar Dispositivos**:
-   - Complete el formulario con los datos del dispositivo
-   - Añada tantos dispositivos como necesite
+   - Completa el formulario manualmente **o importa una lista usando la plantilla**.
+   - **Recuerda:** solo se aceptan los nombres de columna exactos de la plantilla.
+   - Añade los dispositivos individualmente o todos juntos.
 
 3. **Calcular Resultados**:
-   - Presione "Calcular Índice de Sostenibilidad"
-   - Revise los resultados individuales y globales
-   - Exporte los resultados a Excel si lo desea
+   - Presiona "Calcular Índice de Sostenibilidad" para ver los resultados individuales y globales.
+   - Exporta los resultados a Excel si lo deseas.
 
 ## Estructura del Proyecto
 
@@ -124,3 +157,14 @@ Natalia Andrea Ricaurte - na.ricaurtep@uniandes.edu.co
 Laura Valentina Lara - lv.larad@uniandes.edu.co
 
 Link del proyecto: https://github.com/natalia-ricaurte/IoT
+
+## Características y funcionalidades generales.
+
+- **Importación robusta de dispositivos** desde plantilla Excel/CSV/JSON.
+- **Validación automática** de campos y tipos de datos.
+- **Gestión de estado mejorada**: el uploader desaparece tras importar, y puedes cancelar la importación en cualquier momento.
+- **Hoja de ayuda en la plantilla** con descripciones y advertencia.
+- **Mapeo flexible de columnas**: aunque se recomienda no cambiar los nombres, el sistema es tolerante a variantes comunes.
+- **Adición individual o masiva** de dispositivos importados.
+- **Mensajes claros de éxito y advertencia** durante todo el flujo.
+- **Sincronización total entre plantilla, mapeo y procesamiento interno.**
