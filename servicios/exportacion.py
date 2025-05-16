@@ -115,53 +115,98 @@ class ExportadorExcel:
             f"D{fila_actual+1}"
         )
 
+    def _formatear_encabezado(self, texto):
+        # Convierte descripciones largas en títulos más estilizados
+        # Ejemplo: "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento." -> "Potencia (W)"
+        if 'vatios' in texto or '(W)' in texto:
+            return 'Potencia (W)'
+        if 'horas al día' in texto:
+            return 'Horas de uso diario'
+        if 'días al año' in texto:
+            return 'Días de uso al año'
+        if 'kilogramos' in texto or '(kg)' in texto:
+            return 'Peso (kg)'
+        if 'vida útil' in texto and 'años' in texto:
+            return 'Vida útil (años)'
+        if 'Porcentaje de energía' in texto:
+            return 'Energía renovable (%)'
+        if 'funcionalidad' in texto:
+            return 'Funcionalidad (1-10)'
+        if 'reciclable' in texto or 'reciclabilidad' in texto:
+            return 'Reciclabilidad (%)'
+        if 'baterías' in texto:
+            return 'Baterías vida útil'
+        if 'batería' in texto and 'gramos' in texto:
+            return 'Peso batería (g)'
+        if 'mantenimiento' in texto and 'veces' in texto:
+            return 'Mantenimientos'
+        if 'componentes reemplazados' in texto:
+            return 'Componentes reemplazados'
+        if 'componente reemplazado' in texto:
+            return 'Peso componente (g)'
+        if 'nuevo' in texto and 'gramos' in texto:
+            return 'Peso nuevo (g)'
+        if 'final' in texto and 'gramos' in texto:
+            return 'Peso final (g)'
+        if 'nombre' in texto.lower():
+            return 'Nombre del dispositivo'
+        return texto
+
     def _crear_hoja_dispositivos(self):
         """Crea la hoja con la lista de dispositivos."""
         ws_dispositivos = self.wb.create_sheet("Dispositivos")
         ws_dispositivos['A1'] = "Lista de Dispositivos Evaluados"
         ws_dispositivos['A1'].font = Font(bold=True, size=14)
-        
-        headers = ['Nombre', 'Índice de Sostenibilidad']
+
+        columnas_internas = [
+            "nombre", "potencia", "horas", "dias", "peso", "vida", "energia_renovable", "funcionalidad", "reciclabilidad",
+            "B", "Wb", "M", "C", "Wc", "W0", "W"
+        ]
+        headers = [
+            "Nombre del dispositivo", "Potencia (W)", "Horas de uso diario", "Días de uso al año", "Peso (kg)", "Vida útil (años)",
+            "Energía renovable (%)", "Funcionalidad (1-10)", "Reciclabilidad (%)", "Baterías vida útil", "Peso batería (g)",
+            "Mantenimientos", "Componentes reemplazados", "Peso componente (g)", "Peso nuevo (g)", "Peso final (g)"
+        ]
+        headers.append("Índice de Sostenibilidad")
+
         for i, header in enumerate(headers):
             ws_dispositivos[f'{get_column_letter(i+1)}3'] = header
             ws_dispositivos[f'{get_column_letter(i+1)}3'].font = Font(bold=True)
-        
+
         for i, dispositivo in enumerate(st.session_state.dispositivos):
-            ws_dispositivos[f'A{i+4}'] = dispositivo['nombre']
-            ws_dispositivos[f'B{i+4}'] = dispositivo['resultado']['indice_sostenibilidad']
+            for j, col in enumerate(columnas_internas):
+                valor = dispositivo.get(col, 'N/A')
+                ws_dispositivos[f'{get_column_letter(j+1)}{i+4}'] = valor
+            ws_dispositivos[f'{get_column_letter(len(columnas_internas)+1)}{i+4}'] = dispositivo['resultado']['indice_sostenibilidad']
 
     def _crear_hoja_detalle_dispositivo(self, dispositivo):
         """Crea una hoja de detalle para un dispositivo específico."""
         ws_detalle = self.wb.create_sheet(f"Detalle_{dispositivo['nombre'][:20]}")
-        # Título y índice de sostenibilidad en la parte superior
         ws_detalle['A1'] = f"Detalles del Dispositivo: {dispositivo['nombre']}"
         ws_detalle['A1'].font = Font(bold=True, size=14)
         ws_detalle['D1'] = f"Índice de Sostenibilidad: {dispositivo['resultado']['indice_sostenibilidad']:.2f}/10"
         ws_detalle['D1'].font = Font(bold=True, size=14)
 
-        # --- TABLA DE DATOS DE ENTRADA ---
         ws_detalle['A3'] = "Datos de Entrada"
         ws_detalle['A3'].font = Font(bold=True)
-        columnas_plantilla = [
+        columnas_internas = [
             "nombre", "potencia", "horas", "dias", "peso", "vida", "energia_renovable", "funcionalidad", "reciclabilidad",
             "B", "Wb", "M", "C", "Wc", "W0", "W"
+        ]
+        headers = [
+            "Nombre del dispositivo", "Potencia (W)", "Horas de uso diario", "Días de uso al año", "Peso (kg)", "Vida útil (años)",
+            "Energía renovable (%)", "Funcionalidad (1-10)", "Reciclabilidad (%)", "Baterías vida útil", "Peso batería (g)",
+            "Mantenimientos", "Componentes reemplazados", "Peso componente (g)", "Peso nuevo (g)", "Peso final (g)"
         ]
         fila = 4
         ws_detalle[f'A{fila}'] = "Campo"
         ws_detalle[f'B{fila}'] = "Valor"
         ws_detalle[f'A{fila}'].font = ws_detalle[f'B{fila}'].font = Font(bold=True)
-        for i, col in enumerate(columnas_plantilla):
-            desc = None
-            for k, v in MAPEO_COLUMNAS_IMPORTACION.items():
-                if v == col and k in DESCRIPCION_COLUMNAS_IMPORTACION:
-                    desc = DESCRIPCION_COLUMNAS_IMPORTACION[k]
-                    break
-            if not desc:
-                desc = col
-            valor = dispositivo.get(col, '')
+        for i, (col, desc) in enumerate(zip(columnas_internas, headers)):
+            valor = dispositivo.get(col, 'N/A')
             ws_detalle[f'A{fila+1+i}'] = desc
             ws_detalle[f'B{fila+1+i}'] = valor
-        fila_despues_tabla = fila + 1 + len(columnas_plantilla)
+        fila_despues_tabla = fila + 1 + len(columnas_internas)
 
         # Configuración de pesos
         nombre_config_disp = self._obtener_nombre_configuracion_dispositivo(dispositivo)
