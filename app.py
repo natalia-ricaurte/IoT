@@ -1,19 +1,23 @@
 # Librerías estándar
 import uuid
 from datetime import datetime
+import pandas as pd
+import io
+import json
 
 # Librerías de terceros
 import streamlit as st
 
 # Módulos locales
-from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS
-from utilidades.manejo_datos import to_dict_flat
+from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS, GUIA_USO_DASHBOARD
+from utilidades.auxiliares import to_dict_flat, extraer_valor_peso
 from utilidades.estado import inicializar_estado, reiniciar_estado
 from componentes.dispositivos import mostrar_dispositivo, mostrar_resultados_globales
 from componentes.formularios import inicializar_formulario
 from componentes.pesos_ui import mostrar_interfaz_pesos
 from servicios.ahp_servicio import mostrar_matriz_ahp
-from servicios.exportacion import exportar_resultados_excel
+from servicios.exportacion import exportar_resultados_excel, exportar_lista_dispositivos
+from servicios.importacion import generar_plantilla_excel, leer_archivo_dispositivos, generar_plantilla_json
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 from modelo import SostenibilidadIoT
 
@@ -35,71 +39,362 @@ st.title("Dashboard de Evaluación de Sostenibilidad - Dispositivos IoT")
 # Botón para reiniciar
 if st.button("Reiniciar"):
     reiniciar_estado()
+    if 'dispositivos_importados' in st.session_state:
+        del st.session_state['dispositivos_importados']
+    if 'importar_csv' in st.session_state:
+        del st.session_state['importar_csv']
+    if 'mostrar_importar' in st.session_state:
+        st.session_state['mostrar_importar'] = False
     st.rerun()
 
-st.markdown("## Descripción de Métricas")
-with st.expander("Ver métricas clave del modelo"):
-    st.markdown("""
-    **Métricas de sostenibilidad evaluadas:**
-    1. **CE - Consumo de Energía:** kWh anuales usados por el dispositivo.
-    2. **HC - Huella de Carbono:** kg de CO₂eq emitidos.
-    3. **EW - E-waste:** kg de residuos electrónicos generados por año.
-    4. **ER - Energía Renovable:** Porcentaje de energía limpia usada.
-    5. **EE - Eficiencia Energética:** Relación funcionalidad / consumo.
-    6. **DP - Durabilidad del Producto:** Vida útil esperada.
-    7. **RC - Reciclabilidad:** Porcentaje de materiales reciclables.
-    8. **IM - Mantenimiento:** Impacto de baterías, reemplazos y desgaste.
-    """)
+st.markdown("## Descripción de Métricas y Guía de Uso")
+with st.expander("Ver detalles y guía de uso"):
+    st.markdown(GUIA_USO_DASHBOARD)
 
-with st.expander("Guía rápida de uso del dashboard"):
-    st.markdown("""
-1. **Define los pesos de las métricas**
-   - Selecciona el método de asignación de pesos en la columna derecha antes de ingresar dispositivos.
-   - Puedes usar los pesos recomendados, ajustarlos manualmente o calcular nuevos pesos mediante comparación por pares.
-   - **Pesos Recomendados:** Basados en análisis y alineación con ODS.
-   - **Ajuste Manual:** Permite personalizar los pesos y guardar configuraciones personalizadas.
-   - **Pesos Calculados:** Utiliza la matriz de comparación por pares y permite guardar diferentes configuraciones.
-   - **Nota:** Los pesos activos al momento de añadir un dispositivo serán los que se usen para su cálculo. El nombre de la configuración utilizada se guarda y se muestra en los resultados y exportaciones.
+# --- SECCIÓN DE IMPORTACIÓN DE DISPOSITIVOS ---
+st.markdown("## Importar lista de dispositivos")
+import_container = st.container()
+with import_container:
+    if 'mostrar_importar' not in st.session_state:
+        st.session_state.mostrar_importar = False
+    
+    # --- Restaurar pesos manuales si es necesario antes de crear los widgets ---
+    if 'restaurar_pesos_manuales' in st.session_state and st.session_state['restaurar_pesos_manuales']:
+        modo_pesos_actual = st.session_state.get('modo_pesos_radio')
+        pesos_ahp_actual = st.session_state.get('pesos_ahp')
+        pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+        pesos_manuales_individuales = st.session_state.get('pesos_manuales_individuales', {})
+        st.session_state.modo_pesos_radio = modo_pesos_actual
+        if pesos_ahp_actual:
+            st.session_state.pesos_ahp = pesos_ahp_actual
+        if pesos_manuales_actual:
+            st.session_state.pesos_manuales = pesos_manuales_actual
+        if modo_pesos_actual == "Ajuste Manual":
+            for k, v in pesos_manuales_individuales.items():
+                st.session_state[f"peso_manual_{k}"] = v
+        st.session_state['restaurar_pesos_manuales'] = False
+    
+    if st.button("Importar lista de dispositivos"):
+        # Guardar el estado actual de los pesos antes de cambiar mostrar_importar
+        modo_pesos_actual = st.session_state.get('modo_pesos_radio')
+        pesos_ahp_actual = st.session_state.get('pesos_ahp')
+        pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+        pesos_manuales_individuales = {}
+        if modo_pesos_actual == "Ajuste Manual":
+            for k in NOMBRES_METRICAS:
+                pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+        st.session_state['mostrar_importar'] = True
+        # Guardar para restaurar en el próximo ciclo
+        st.session_state['restaurar_pesos_manuales'] = True
+        st.session_state['pesos_manuales_individuales'] = pesos_manuales_individuales
+        st.session_state['modo_pesos_radio'] = modo_pesos_actual
+        st.session_state['pesos_ahp'] = pesos_ahp_actual
+        st.session_state['pesos_manuales'] = pesos_manuales_actual
+        st.rerun()
+    
+    buffer = generar_plantilla_excel()
+    st.download_button(
+        label="Descargar plantilla Excel (.xlsx)",
+        data=buffer,
+        file_name="plantilla_dispositivos.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    # Botón para descargar plantilla JSON
+    buffer_json = generar_plantilla_json()
+    st.download_button(
+        label="Descargar plantilla JSON",
+        data=buffer_json,
+        file_name="plantilla_dispositivos.json",
+        mime="application/json"
+    )
+    st.caption("Recuerda: no cambies los nombres de las columnas (Excel) o claves (JSON) en las plantillas. Deben coincidir exactamente para que la importación funcione.")
 
-2. **Ingresa las características de tus dispositivos IoT**
-   - Completa el formulario y pulsa **'Añadir dispositivo'** para guardar cada uno.
-   - Al añadir un nuevo dispositivo, los resultados globales previos se eliminan automáticamente. Deberás recalcular el índice global para ver los resultados actualizados.
+    # Mostrar uploader solo si mostrar_importar es True
+    if st.session_state.mostrar_importar:
+        st.info("Sube un archivo CSV, Excel o JSON con la lista de dispositivos a importar. Descarga la plantilla para ver el formato requerido.")
+        if st.button("Cancelar importación", key="cancelar_importacion"):
+            # Guardar el estado actual de los pesos antes de cancelar
+            modo_pesos_actual = st.session_state.get('modo_pesos_radio')
+            pesos_ahp_actual = st.session_state.get('pesos_ahp')
+            pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+            pesos_manuales_individuales = {}
+            if modo_pesos_actual == "Ajuste Manual":
+                for k in NOMBRES_METRICAS:
+                    pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+            # Guardar para restaurar en el próximo ciclo
+            st.session_state['restaurar_pesos_manuales'] = True
+            st.session_state['pesos_manuales_individuales'] = pesos_manuales_individuales
+            st.session_state['modo_pesos_radio'] = modo_pesos_actual
+            st.session_state['pesos_ahp'] = pesos_ahp_actual
+            st.session_state['pesos_manuales'] = pesos_manuales_actual
+            st.session_state.mostrar_importar = False
+            st.session_state['dispositivos_importados'] = []
+            if 'mensaje_importacion' in st.session_state:
+                del st.session_state['mensaje_importacion']
+            st.rerun()
+        archivo_import = st.file_uploader("Selecciona el archivo", type=["csv", "xlsx", "json"], key="importar_csv")
+        if archivo_import is not None:
+            try:
+                df_import = leer_archivo_dispositivos(archivo_import)
+                if len(df_import) > 0:
+                    importados = df_import.to_dict(orient='records')
+                    for d in importados:
+                        d['_import_hash'] = str(uuid.uuid4())
+                    st.session_state['dispositivos_importados'] = importados
+                    if 'importar_csv' in st.session_state:
+                        del st.session_state['importar_csv']
+                    st.session_state['mostrar_importar'] = False
+                    st.session_state['mensaje_importacion'] = f"✅ Archivo '{archivo_import.name}' leído correctamente. Se encontraron {len(df_import)} dispositivos.\n\nAhora puedes añadirlos individualmente o todos al sistema usando los botones correspondientes."
 
-3. **Gestiona tu lista de dispositivos**
-   - Puedes ver los detalles completos de cada dispositivo pulsando **'Mostrar detalles'**.
-   - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo, junto con el nombre de la configuración de pesos aplicada.
-   - Para eliminar un dispositivo, marca la casilla **'Eliminar dispositivo'** y confirma la acción con el botón correspondiente. Al eliminar cualquier dispositivo, los resultados globales se eliminan y deberás recalcular.
+                    # --- GUARDAR Y RESTAURAR ESTADO DE PESOS ---
+                    modo_pesos_actual = st.session_state.get('modo_pesos_radio')
+                    pesos_ahp_actual = st.session_state.get('pesos_ahp')
+                    pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+                    pesos_manuales_individuales = {}
+                    if modo_pesos_actual == "Ajuste Manual":
+                        for k in NOMBRES_METRICAS:
+                            pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+                    # Restaurar
+                    st.session_state.modo_pesos_radio = modo_pesos_actual
+                    if pesos_ahp_actual:
+                        st.session_state.pesos_ahp = pesos_ahp_actual
+                    if pesos_manuales_actual:
+                        st.session_state.pesos_manuales = pesos_manuales_actual
+                    if modo_pesos_actual == "Ajuste Manual":
+                        for k, v in pesos_manuales_individuales.items():
+                            st.session_state[f"peso_manual_{k}"] = v
+                    # --- FIN RESTAURAR ESTADO DE PESOS ---
 
-4. **Calcula y analiza los resultados**
-   - Pulsa **'Calcular Índice de Sostenibilidad'** para ver los resultados individuales y globales.
-   - El índice global y los detalles del sistema solo reflejan los dispositivos actualmente en la lista.
+                    st.rerun()
+                else:
+                    st.session_state['dispositivos_importados'] = []
+                    st.warning("⚠️ El archivo está vacío. No se encontraron dispositivos para importar.")
+            except Exception as e:
+                st.session_state['dispositivos_importados'] = []
+                print(f"Error al leer el archivo: {str(e)}")
+                st.error(f"❌ Error al leer el archivo: {str(e)}")
 
-5. **Consulta los detalles del sistema**
-   - En la sección de resultados globales, expande **'Detalles del sistema'** para ver:
-     - Cantidad total de dispositivos evaluados.
-     - Desviación estándar de los índices individuales.
-     - Fecha y hora del cálculo global.
-     - Nota sobre comparabilidad si los dispositivos fueron evaluados con diferentes pesos.
-     - Pesos utilizados para el cálculo global y nombre de la configuración aplicada.
-     - Lista de dispositivos incluidos y su índice individual.
+    # Mostrar la lista de dispositivos importados aunque mostrar_importar sea False
+    if 'dispositivos_importados' in st.session_state and st.session_state['dispositivos_importados']:
+        # Mostrar mensaje de éxito de importación si existe
+        if 'mensaje_importacion' in st.session_state:
+            st.success(st.session_state['mensaje_importacion'])
+        st.markdown("""
+        ### Dispositivos importados pendientes de añadir
+        Revisa los datos principales de cada dispositivo. Puedes ver los detalles completos haciendo clic en \"Ver detalles\". Selecciona los pesos antes de añadir cada dispositivo al sistema.
+        """)
+        for idx, disp in enumerate(st.session_state['dispositivos_importados']):
+            with st.container():
+                col1, col2 = st.columns([5, 1])
+                nombre = disp.get('nombre', 'Sin nombre')
+                potencia = disp.get('potencia', 'N/A')
+                vida = disp.get('vida', 'N/A')
+                col1.markdown(f"**{nombre}** | Potencia: {potencia} W | Vida útil: {vida} años")
+                key_exp = f"expandir_importado_{idx}"
+                if key_exp not in st.session_state:
+                    st.session_state[key_exp] = False
+                if col2.button("Ver detalles" if not st.session_state[key_exp] else "Ocultar detalles", key=f"btn_det_import_{idx}"):
+                    st.session_state[key_exp] = not st.session_state[key_exp]
+                    st.rerun()
+                if st.session_state[key_exp]:
+                    st.write(disp)
+                if st.button("Añadir dispositivo al sistema", key=f"btn_add_import_{idx}"):
+                    # Guardar el estado actual de los pesos
+                    modo_pesos_actual = st.session_state.modo_pesos_radio
+                    pesos_ahp_actual = st.session_state.get('pesos_ahp', None)
+                    pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+                    
+                    # Guardar los valores individuales de los pesos manuales
+                    pesos_manuales_individuales = {}
+                    if modo_pesos_actual == "Ajuste Manual":
+                        for k in NOMBRES_METRICAS:
+                            pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+                    
+                    # Obtener pesos activos
+                    if modo_pesos_actual == "Calcular nuevos pesos":
+                        if pesos_ahp_actual:
+                            pesos_usuario = pesos_ahp_actual
+                            nombre_config_pesos = "Pesos Calculados"
+                            for nombre_config_ahp, config in st.session_state.configuraciones_ahp.items():
+                                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_usuario):
+                                    nombre_config_pesos = f"Configuración Calculada: {nombre_config_ahp}"
+                                    break
+                        else:
+                            pesos_usuario = obtener_pesos_recomendados()
+                            nombre_config_pesos = "Pesos Recomendados"
+                    elif modo_pesos_actual == "Ajuste Manual":
+                        pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+                        pesos_usuario, _ = validar_pesos_manuales(pesos_manuales)
+                        nombre_config_pesos = "Pesos Manuales Personalizados"
+                        for nombre_config_manual, config in st.session_state.pesos_guardados.items():
+                            if to_dict_flat(config) == to_dict_flat(pesos_usuario):
+                                nombre_config_pesos = f"Configuración Manual: {nombre_config_manual}"
+                                break
+                    else:
+                        pesos_usuario = obtener_pesos_recomendados()
+                        nombre_config_pesos = "Pesos Recomendados"
 
-6. **Exporta los resultados completos a Excel**
-   - Tras calcular el índice global, utiliza el botón **'Descargar Resultados Completos'** para exportar toda la información a un archivo Excel profesional.
-   - El archivo incluye:
-     - Resumen general con índice global, fecha, configuración de pesos y gráfico radar.
-     - Tabla de pesos utilizados para el cálculo global.
-     - Lista de dispositivos y sus índices.
-     - Hojas de detalle para cada dispositivo, con datos de entrada, nombre de la configuración de pesos utilizada, tabla de pesos y gráfico radar individual.
+                    sensor = SostenibilidadIoT(nombre)
+                    sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in pesos_usuario.items()}
+                    sensor.calcular_consumo_energia(
+                        float(disp.get('potencia', 0)),
+                        float(disp.get('horas', 0)),
+                        float(disp.get('dias', 0))
+                    )
+                    sensor.calcular_huella_carbono()
+                    sensor.calcular_ewaste(
+                        float(disp.get('peso', 0)),
+                        float(disp.get('vida', 0))
+                    )
+                    sensor.calcular_energia_renovable(float(disp.get('energia_renovable', 0)))
+                    sensor.calcular_eficiencia_energetica(float(disp.get('funcionalidad', 0)))
+                    sensor.calcular_durabilidad(float(disp.get('vida', 0)))
+                    sensor.calcular_reciclabilidad(float(disp.get('reciclabilidad', 0)))
+                    sensor.calcular_indice_mantenimiento(
+                        int(disp.get('B', 0)),
+                        float(disp.get('Wb', 0)),
+                        int(disp.get('M', 0)),
+                        int(disp.get('C', 0)),
+                        float(disp.get('Wc', 0)),
+                        float(disp.get('W0', 0)),
+                        float(disp.get('W', 0))
+                    )
+                    resultado = sensor.calcular_sostenibilidad()
+                    dispositivo_data = disp.copy()
+                    dispositivo_data.update({
+                        "id": str(uuid.uuid4()),
+                        "calculo_realizado": True,
+                        "pesos_utilizados": pesos_usuario,
+                        "resultado": resultado,
+                        "snapshot_form": disp.copy(),
+                        "snapshot_pesos": {
+                            "modo": modo_pesos_actual,
+                            "nombre_configuracion": nombre_config_pesos,
+                            "pesos_manuales": pesos_manuales_actual,
+                            "pesos_ahp": pesos_ahp_actual
+                        }
+                    })
+                    st.session_state.dispositivos.append(dispositivo_data)
+                    st.session_state['dispositivos_importados'] = [d for d in st.session_state['dispositivos_importados'] if d.get('_import_hash') != disp.get('_import_hash')]
+                    for var in ["resultado_global", "fecha_calculo_global"]:
+                        if var in st.session_state:
+                            del st.session_state[var]
+                    if 'mensaje_importacion' in st.session_state:
+                        del st.session_state['mensaje_importacion']
+                    
+                    # Restaurar el estado de los pesos
+                    st.session_state.modo_pesos_radio = modo_pesos_actual
+                    if pesos_ahp_actual:
+                        st.session_state.pesos_ahp = pesos_ahp_actual
+                    if pesos_manuales_actual:
+                        st.session_state.pesos_manuales = pesos_manuales_actual
+                    
+                    # Restaurar los valores individuales de los pesos manuales
+                    if modo_pesos_actual == "Ajuste Manual":
+                        for k, v in pesos_manuales_individuales.items():
+                            st.session_state[f"peso_manual_{k}"] = v
+                    
+                    st.success(f"Dispositivo '{nombre}' añadido correctamente al sistema.")
+                    st.rerun()
+        st.info("Cuando estés listo, podrás añadir los dispositivos individualmente o todos juntos al sistema. Recuerda seleccionar los pesos antes de añadirlos.")
 
----
+        # Botón para añadir todos los dispositivos importados
+        if st.session_state['dispositivos_importados']:
+            if st.button("Añadir todos los dispositivos importados al sistema", key="btn_add_all_importados"):
+                # Guardar el estado actual de los pesos
+                modo_pesos_actual = st.session_state.modo_pesos_radio
+                pesos_ahp_actual = st.session_state.get('pesos_ahp', None)
+                pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
+                pesos_manuales_individuales = {}
+                if modo_pesos_actual == "Ajuste Manual":
+                    for k in NOMBRES_METRICAS:
+                        pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
+                nuevos_dispositivos = []
+                for disp in st.session_state['dispositivos_importados']:
+                    nombre = disp.get('nombre', 'Sin nombre')
+                    # Obtener pesos activos
+                    if modo_pesos_actual == "Calcular nuevos pesos":
+                        if pesos_ahp_actual:
+                            pesos_usuario = pesos_ahp_actual
+                            nombre_config_pesos = "Pesos Calculados"
+                            for nombre_config_ahp, config in st.session_state.configuraciones_ahp.items():
+                                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_usuario):
+                                    nombre_config_pesos = f"Configuración Calculada: {nombre_config_ahp}"
+                                    break
+                        else:
+                            pesos_usuario = obtener_pesos_recomendados()
+                            nombre_config_pesos = "Pesos Recomendados"
+                    elif modo_pesos_actual == "Ajuste Manual":
+                        pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
+                        pesos_usuario, _ = validar_pesos_manuales(pesos_manuales)
+                        nombre_config_pesos = "Pesos Manuales Personalizados"
+                        for nombre_config_manual, config in st.session_state.pesos_guardados.items():
+                            if to_dict_flat(config) == to_dict_flat(pesos_usuario):
+                                nombre_config_pesos = f"Configuración Manual: {nombre_config_manual}"
+                                break
+                    else:
+                        pesos_usuario = obtener_pesos_recomendados()
+                        nombre_config_pesos = "Pesos Recomendados"
 
-**Consejos y advertencias:**
-- Si cambias los pesos o la lista de dispositivos, recuerda recalcular el índice global para obtener resultados actualizados.
-- Si los dispositivos fueron evaluados con diferentes configuraciones de pesos, los índices individuales pueden no ser directamente comparables.
-- El dashboard elimina automáticamente los resultados globales al añadir o eliminar dispositivos para evitar mostrar información desactualizada.
-- Puedes guardar y cargar diferentes configuraciones de pesos tanto para el ajuste manual como para los pesos calculados mediante comparación por pares.
-- El nombre de la configuración de pesos utilizada se guarda y se muestra en todos los resultados y exportaciones para máxima trazabilidad.
-""")
+                    sensor = SostenibilidadIoT(nombre)
+                    sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in pesos_usuario.items()}
+                    sensor.calcular_consumo_energia(
+                        float(disp.get('potencia', 0)),
+                        float(disp.get('horas', 0)),
+                        float(disp.get('dias', 0))
+                    )
+                    sensor.calcular_huella_carbono()
+                    sensor.calcular_ewaste(
+                        float(disp.get('peso', 0)),
+                        float(disp.get('vida', 0))
+                    )
+                    sensor.calcular_energia_renovable(float(disp.get('energia_renovable', 0)))
+                    sensor.calcular_eficiencia_energetica(float(disp.get('funcionalidad', 0)))
+                    sensor.calcular_durabilidad(float(disp.get('vida', 0)))
+                    sensor.calcular_reciclabilidad(float(disp.get('reciclabilidad', 0)))
+                    sensor.calcular_indice_mantenimiento(
+                        int(disp.get('B', 0)),
+                        float(disp.get('Wb', 0)),
+                        int(disp.get('M', 0)),
+                        int(disp.get('C', 0)),
+                        float(disp.get('Wc', 0)),
+                        float(disp.get('W0', 0)),
+                        float(disp.get('W', 0))
+                    )
+                    resultado = sensor.calcular_sostenibilidad()
+                    dispositivo_data = disp.copy()
+                    dispositivo_data.update({
+                        "id": str(uuid.uuid4()),
+                        "calculo_realizado": True,
+                        "pesos_utilizados": pesos_usuario,
+                        "resultado": resultado,
+                        "snapshot_form": disp.copy(),
+                        "snapshot_pesos": {
+                            "modo": modo_pesos_actual,
+                            "nombre_configuracion": nombre_config_pesos,
+                            "pesos_manuales": pesos_manuales_actual,
+                            "pesos_ahp": pesos_ahp_actual
+                        }
+                    })
+                    nuevos_dispositivos.append(dispositivo_data)
+                st.session_state.dispositivos.extend(nuevos_dispositivos)
+                st.session_state['dispositivos_importados'] = []
+                if 'mensaje_importacion' in st.session_state:
+                    del st.session_state['mensaje_importacion']
+                for var in ["resultado_global", "fecha_calculo_global"]:
+                    if var in st.session_state:
+                        del st.session_state[var]
+                # Restaurar el estado de los pesos
+                st.session_state.modo_pesos_radio = modo_pesos_actual
+                if pesos_ahp_actual:
+                    st.session_state.pesos_ahp = pesos_ahp_actual
+                if pesos_manuales_actual:
+                    st.session_state.pesos_manuales = pesos_manuales_actual
+                if modo_pesos_actual == "Ajuste Manual":
+                    for k, v in pesos_manuales_individuales.items():
+                        st.session_state[f"peso_manual_{k}"] = v
+                st.success("Todos los dispositivos importados han sido añadidos correctamente al sistema.")
+                st.rerun()
 
 # Inicializar en session_state si no existen
 for k, (default, _) in FORM_KEYS.items():
@@ -250,7 +545,7 @@ else:
                 # Si no existe resultado, recalcularlo usando los pesos guardados
                 if "resultado" not in dispositivo or not dispositivo["calculo_realizado"]:
                     sensor = SostenibilidadIoT(dispositivo["nombre"])
-                    sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in dispositivo["pesos_utilizados"].items()}
+                    sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in dispositivo["pesos_utilizados"].items()}
                     sensor.calcular_consumo_energia(dispositivo["potencia"], dispositivo["horas"], dispositivo["dias"])
                     sensor.calcular_huella_carbono()
                     sensor.calcular_ewaste(dispositivo["peso"], dispositivo["vida"])
@@ -300,7 +595,7 @@ if st.session_state.dispositivos:
         # Si no existe resultado, recalcularlo usando los pesos guardados
         if "resultado" not in disp or not disp["calculo_realizado"]:
             sensor = SostenibilidadIoT(disp["nombre"])
-            sensor.pesos = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) for k, v in disp["pesos_utilizados"].items()}
+            sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in disp["pesos_utilizados"].items()}
             sensor.calcular_consumo_energia(disp["potencia"], disp["horas"], disp["dias"])
             sensor.calcular_huella_carbono()
             sensor.calcular_ewaste(disp["peso"], disp["vida"])
@@ -330,7 +625,7 @@ if st.session_state.dispositivos:
 # --- MOSTRAR RESULTADOS GLOBALES ---
 mostrar_resultados_globales()
 
-# Botón de descarga directo
+    # Botón de descarga directo
 if "resultado_global" in st.session_state:
     excel_file = exportar_resultados_excel()
     st.download_button(
@@ -339,3 +634,57 @@ if "resultado_global" in st.session_state:
         file_name=f"sostenibilidad_iot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+# --- BOTÓN DESCARGA LISTA DE DISPOSITIVOS ---
+if st.session_state.get('dispositivos'):
+    st.markdown('---')
+    st.subheader('Descargar lista de dispositivos añadidos')
+    formato = st.selectbox('Selecciona el formato de descarga:', ['Excel (.xlsx)', 'CSV (.csv)', 'JSON (.json)'], key='formato_descarga_dispositivos')
+    formatos_map = {
+        'Excel (.xlsx)': 'excel',
+        'CSV (.csv)': 'csv',
+        'JSON (.json)': 'json'
+    }
+    formato_export = formatos_map[formato]
+    buffer = exportar_lista_dispositivos(st.session_state.dispositivos, formato=formato_export)
+    if formato_export == 'excel':
+        st.download_button(
+            label='Descargar lista de dispositivos añadidos (Excel)',
+            data=buffer,
+            file_name='dispositivos_anadidos.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    elif formato_export == 'csv':
+        st.download_button(
+            label='Descargar lista de dispositivos añadidos (CSV)',
+            data=buffer,
+            file_name='dispositivos_anadidos.csv',
+            mime='text/csv'
+        )
+    elif formato_export == 'json':
+        st.download_button(
+            label='Descargar lista de dispositivos añadidos (JSON)',
+            data=buffer,
+            file_name='dispositivos_anadidos.json',
+            mime='application/json'
+        )
+
+# --- PIE DE PÁGINA ---
+st.markdown(
+    """
+    <hr>
+    <div style='text-align: center;'>
+        <a href='https://github.com/natalia-ricaurte/IoT' target='_blank' style='margin-right:30px;'>
+            <img src='https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png' width='40' style='vertical-align:middle; margin-right:10px;'/>
+            <span style='font-size:18px; vertical-align:middle;'>Repositorio en GitHub</span>
+        </a>
+        <a href='https://sistemas.uniandes.edu.co/es/' target='_blank' style='margin-left:30px;'>
+            <img src='https://upload.wikimedia.org/wikipedia/commons/4/47/University_of_Los_Andes_logo.svg' width='40' style='vertical-align:middle; margin-right:10px;'/>
+            <span style='font-size:18px; vertical-align:middle;'>Universidad de los Andes</span>
+        </a>
+        <br>
+        <span style='font-size:12px; color:gray;'>© 2024 Juan Camilo Pacheco, Natalia Andrea Ricaurte, Laura Valentina Lara</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)

@@ -3,11 +3,14 @@ from datetime import datetime
 from io import BytesIO
 import openpyxl
 from openpyxl.chart import RadarChart, Reference
-from openpyxl.styles import Font
+from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
+import pandas as pd
+import io
+import json
 
-from utilidades.constantes import NOMBRES_METRICAS
-from utilidades.manejo_datos import to_dict_flat
+from utilidades.constantes import NOMBRES_METRICAS, MAPEO_COLUMNAS_EXPORTACION
+from utilidades.auxiliares import to_dict_flat, obtener_valor_dispositivo
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 
 class ExportadorExcel:
@@ -115,58 +118,120 @@ class ExportadorExcel:
             f"D{fila_actual+1}"
         )
 
+    def _formatear_encabezado(self, texto):
+        # Convierte descripciones largas en títulos más estilizados
+        # Ejemplo: "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento." -> "Potencia (W)"
+        if 'vatios' in texto or '(W)' in texto:
+            return 'Potencia (W)'
+        if 'horas al día' in texto:
+            return 'Horas de uso diario'
+        if 'días al año' in texto:
+            return 'Días de uso al año'
+        if 'kilogramos' in texto or '(kg)' in texto:
+            return 'Peso (kg)'
+        if 'vida útil' in texto and 'años' in texto:
+            return 'Vida útil (años)'
+        if 'Porcentaje de energía' in texto:
+            return 'Energía renovable (%)'
+        if 'funcionalidad' in texto:
+            return 'Funcionalidad (1-10)'
+        if 'reciclable' in texto or 'reciclabilidad' in texto:
+            return 'Reciclabilidad (%)'
+        if 'baterías' in texto:
+            return 'Baterías vida útil'
+        if 'batería' in texto and 'gramos' in texto:
+            return 'Peso batería (g)'
+        if 'mantenimiento' in texto and 'veces' in texto:
+            return 'Mantenimientos'
+        if 'componentes reemplazados' in texto:
+            return 'Componentes reemplazados'
+        if 'componente reemplazado' in texto:
+            return 'Peso componente (g)'
+        if 'nuevo' in texto and 'gramos' in texto:
+            return 'Peso nuevo (g)'
+        if 'final' in texto and 'gramos' in texto:
+            return 'Peso final (g)'
+        if 'nombre' in texto.lower():
+            return 'Nombre del dispositivo'
+        return texto
+
     def _crear_hoja_dispositivos(self):
         """Crea la hoja con la lista de dispositivos."""
         ws_dispositivos = self.wb.create_sheet("Dispositivos")
         ws_dispositivos['A1'] = "Lista de Dispositivos Evaluados"
         ws_dispositivos['A1'].font = Font(bold=True, size=14)
-        
-        headers = ['Nombre', 'Índice de Sostenibilidad']
+
+        columnas_internas = [
+            "nombre", "potencia", "horas", "dias", "peso", "vida", "energia_renovable", "funcionalidad", "reciclabilidad",
+            "B", "Wb", "M", "C", "Wc", "W0", "W"
+        ]
+        headers = [
+            "Nombre del dispositivo", "Potencia (W)", "Horas de uso diario", "Días de uso al año", "Peso (kg)", "Vida útil (años)",
+            "Energía renovable (%)", "Funcionalidad (1-10)", "Reciclabilidad (%)", "Baterías vida útil", "Peso batería (g)",
+            "Mantenimientos", "Componentes reemplazados", "Peso componente (g)", "Peso nuevo (g)", "Peso final (g)"
+        ]
+        headers.append("Índice de Sostenibilidad")
+
         for i, header in enumerate(headers):
             ws_dispositivos[f'{get_column_letter(i+1)}3'] = header
             ws_dispositivos[f'{get_column_letter(i+1)}3'].font = Font(bold=True)
-        
+
+        # Resaltar la columna del índice
+        fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")  # Amarillo claro
+        col_idx = len(columnas_internas) + 1
+        cell = ws_dispositivos[f'{get_column_letter(col_idx)}3']
+        cell.font = Font(bold=True)
+        cell.fill = fill
+
         for i, dispositivo in enumerate(st.session_state.dispositivos):
-            ws_dispositivos[f'A{i+4}'] = dispositivo['nombre']
-            ws_dispositivos[f'B{i+4}'] = dispositivo['resultado']['indice_sostenibilidad']
+            for j, col in enumerate(columnas_internas):
+                valor = dispositivo.get(col, 'N/A')
+                ws_dispositivos[f'{get_column_letter(j+1)}{i+4}'] = valor
+            cell_val = ws_dispositivos[f'{get_column_letter(col_idx)}{i+4}']
+            cell_val.value = dispositivo['resultado']['indice_sostenibilidad']
+            cell_val.fill = fill
+            cell_val.font = Font(bold=True)
 
     def _crear_hoja_detalle_dispositivo(self, dispositivo):
         """Crea una hoja de detalle para un dispositivo específico."""
         ws_detalle = self.wb.create_sheet(f"Detalle_{dispositivo['nombre'][:20]}")
         ws_detalle['A1'] = f"Detalles del Dispositivo: {dispositivo['nombre']}"
         ws_detalle['A1'].font = Font(bold=True, size=14)
-        ws_detalle['A3'] = f"Índice de Sostenibilidad: {dispositivo['resultado']['indice_sostenibilidad']:.2f}/10"
-        
-        # Datos de entrada
-        ws_detalle['A5'] = "Datos de Entrada"
-        ws_detalle['A5'].font = Font(bold=True)
-        datos_entrada = {
-            'Potencia (W)': dispositivo['potencia'],
-            'Horas uso diario': dispositivo['horas'],
-            'Días uso/año': dispositivo['dias'],
-            'Peso (kg)': dispositivo['peso'],
-            'Vida útil (años)': dispositivo['vida'],
-            'Energía renovable (%)': dispositivo['energia_renovable'],
-            'Funcionalidad': dispositivo['funcionalidad'],
-            'Reciclabilidad (%)': dispositivo['reciclabilidad']
-        }
-        
-        for i, (key, value) in enumerate(datos_entrada.items()):
-            ws_detalle[f'A{6+i}'] = key
-            ws_detalle[f'B{6+i}'] = value
-        
+        ws_detalle['D1'] = f"Índice de Sostenibilidad: {dispositivo['resultado']['indice_sostenibilidad']:.2f}/10"
+        ws_detalle['D1'].font = Font(bold=True, size=14)
+
+        ws_detalle['A3'] = "Datos de Entrada"
+        ws_detalle['A3'].font = Font(bold=True)
+        columnas_internas = [
+            "nombre", "potencia", "horas", "dias", "peso", "vida", "energia_renovable", "funcionalidad", "reciclabilidad",
+            "B", "Wb", "M", "C", "Wc", "W0", "W"
+        ]
+        headers = [
+            "Nombre del dispositivo", "Potencia (W)", "Horas de uso diario", "Días de uso al año", "Peso (kg)", "Vida útil (años)",
+            "Energía renovable (%)", "Funcionalidad (1-10)", "Reciclabilidad (%)", "Baterías vida útil", "Peso batería (g)",
+            "Mantenimientos", "Componentes reemplazados", "Peso componente (g)", "Peso nuevo (g)", "Peso final (g)"
+        ]
+        fila = 4
+        ws_detalle[f'A{fila}'] = "Campo"
+        ws_detalle[f'B{fila}'] = "Valor"
+        ws_detalle[f'A{fila}'].font = ws_detalle[f'B{fila}'].font = Font(bold=True)
+        for i, (col, desc) in enumerate(zip(columnas_internas, headers)):
+            valor = dispositivo.get(col, 'N/A')
+            ws_detalle[f'A{fila+1+i}'] = desc
+            ws_detalle[f'B{fila+1+i}'] = valor
+        fila_despues_tabla = fila + 1 + len(columnas_internas)
+
         # Configuración de pesos
         nombre_config_disp = self._obtener_nombre_configuracion_dispositivo(dispositivo)
-        ws_detalle['D4'] = f"Configuración de pesos utilizada: {nombre_config_disp}"
-        ws_detalle['D4'].font = Font(bold=True)
+        ws_detalle[f'D{fila_despues_tabla+2}'] = f"Configuración de pesos utilizada: {nombre_config_disp}"
+        ws_detalle[f'D{fila_despues_tabla+2}'].font = Font(bold=True)
         
         # Tabla de pesos
-        fila_actual = self._crear_tabla_pesos(ws_detalle, 5, dispositivo.get('pesos_utilizados', {}))
+        fila_actual = self._crear_tabla_pesos(ws_detalle, fila_despues_tabla+2, dispositivo.get('pesos_utilizados', {}))
         
         # Métricas normalizadas y gráfico
         ws_detalle[f'G5'] = "Métricas Normalizadas"
         ws_detalle[f'G5'].font = Font(bold=True)
-        
         metricas = []
         valores = []
         fila_metricas = 6
@@ -175,7 +240,6 @@ class ExportadorExcel:
             ws_detalle[f'H{fila_metricas+i}'] = value
             metricas.append(NOMBRES_METRICAS[key])
             valores.append(value)
-        
         self._crear_grafico_radar(
             ws_detalle,
             fila_metricas,
@@ -230,4 +294,37 @@ class ExportadorExcel:
 def exportar_resultados_excel():
     """Función principal para exportar resultados a Excel."""
     exportador = ExportadorExcel()
-    return exportador.exportar() 
+    return exportador.exportar()
+
+def exportar_lista_dispositivos(dispositivos, formato='excel'):
+    """
+    Exporta la lista de dispositivos en el formato especificado (excel, csv, json),
+    usando los nombres de columna de la plantilla para máxima compatibilidad.
+    Retorna un buffer (Excel), string codificado (CSV) o string codificado (JSON).
+    """
+    mapeo_columnas = MAPEO_COLUMNAS_EXPORTACION
+    columnas_internas = list(mapeo_columnas.keys())
+    headers = [mapeo_columnas[col] for col in columnas_internas]
+    data = []
+    for disp in dispositivos:
+        row = [disp.get(col, '') for col in columnas_internas]
+        data.append(row)
+    df = pd.DataFrame(data, columns=headers)
+    if formato == 'excel':
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Dispositivos')
+        buffer.seek(0)
+        return buffer
+    elif formato == 'csv':
+        csv = df.to_csv(index=False, sep=',', encoding='utf-8')
+        return csv.encode('utf-8')
+    elif formato == 'json':
+        data_json = [
+            {mapeo_columnas[col]: disp.get(col, '') for col in columnas_internas}
+            for disp in dispositivos
+        ]
+        json_str = json.dumps(data_json, indent=2, ensure_ascii=False)
+        return json_str.encode('utf-8')
+    else:
+        raise ValueError('Formato no soportado: ' + formato) 
