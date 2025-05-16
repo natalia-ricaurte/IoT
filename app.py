@@ -129,9 +129,7 @@ with import_container:
         archivo_import = st.file_uploader("Selecciona el archivo", type=["csv", "xlsx", "json"], key="importar_csv")
         if archivo_import is not None:
             try:
-                print(f"Intentando leer archivo: {archivo_import.name}")
                 df_import = leer_archivo_dispositivos(archivo_import)
-                print(f"Archivo leído correctamente. DataFrame shape: {df_import.shape}")
                 if len(df_import) > 0:
                     importados = df_import.to_dict(orient='records')
                     for d in importados:
@@ -195,7 +193,6 @@ with import_container:
                 if st.session_state[key_exp]:
                     st.write(disp)
                 if st.button("Añadir dispositivo al sistema", key=f"btn_add_import_{idx}"):
-                    print('ANTES DE AÑADIR IMPORTADO: modo_pesos_radio =', st.session_state.get('modo_pesos_radio'))
                     # Guardar el estado actual de los pesos
                     modo_pesos_actual = st.session_state.modo_pesos_radio
                     pesos_ahp_actual = st.session_state.get('pesos_ahp', None)
@@ -291,7 +288,6 @@ with import_container:
                         for k, v in pesos_manuales_individuales.items():
                             st.session_state[f"peso_manual_{k}"] = v
                     
-                    print('DESPUÉS DE AÑADIR IMPORTADO: modo_pesos_radio =', st.session_state.get('modo_pesos_radio'))
                     st.success(f"Dispositivo '{nombre}' añadido correctamente al sistema.")
                     st.rerun()
         st.info("Cuando estés listo, podrás añadir los dispositivos individualmente o todos juntos al sistema. Recuerda seleccionar los pesos antes de añadirlos.")
