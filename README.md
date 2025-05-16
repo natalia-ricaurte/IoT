@@ -6,22 +6,30 @@ El sistema utiliza el método AHP (Analytic Hierarchy Process) combinado con los
 
 ## Características Principales
 
-- Evaluación de sostenibilidad basada en 8 métricas clave:
-  - Consumo de Energía (CE)
-  - Huella de Carbono (HC)
-  - E-waste (EW)
-  - Energía Renovable (ER)
-  - Eficiencia Energética (EE)
-  - Durabilidad del Producto (DP)
-  - Reciclabilidad (RC)
-  - Mantenimiento (IM)
-- Tres métodos de asignación de pesos:
-  - Pesos recomendados (basados en AHP+ODS)
-  - Ajuste manual
-  - Cálculo mediante comparación por pares
-- Exportación de resultados a Excel
-- Gestión de configuraciones de pesos
-- Visualización de resultados mediante gráficos
+- **Evaluación Integral**: 8 métricas clave para una evaluación completa:
+  - Consumo de Energía (CE): Evalúa el consumo eléctrico en kWh
+  - Huella de Carbono (HC): Calcula las emisiones de CO₂ en kg
+  - E-waste (EW): Mide la generación de residuos electrónicos
+  - Energía Renovable (ER): Porcentaje de energía limpia utilizada
+  - Eficiencia Energética (EE): Evalúa la relación entre funcionalidad y consumo
+  - Durabilidad del Producto (DP): Vida útil del dispositivo
+  - Reciclabilidad (RC): Porcentaje de materiales reciclables
+  - Mantenimiento (IM): Impacto ambiental del mantenimiento
+
+- **Métodos de Asignación de Pesos**:
+  - **Pesos Recomendados**: Basados en análisis AHP+ODS, ideal para evaluaciones estándar
+  - **Ajuste Manual**: Personalización directa de pesos según necesidades específicas
+  - **Comparación por Pares**: Cálculo mediante matriz de comparación AHP con verificación de consistencia
+
+- **Gestión de Configuraciones de pesos**:
+  - Guardado y carga de configuraciones personalizadas
+  - Comparación entre diferentes configuraciones
+  - Exportación de resultados con detalles de configuración
+
+- **Visualización y Análisis**:
+  - Gráficos radar para métricas individuales y globales
+  - Tablas detalladas de resultados
+  - Exportación completa a Excel
 
 ## Requisitos
 
@@ -52,25 +60,53 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Uso
+## Guía de Uso
+
+### 1. Inicio Rápido
 
 1. Iniciar la aplicación:
 ```bash
 streamlit run app.py
 ```
 
-2. Acceder al dashboard en el navegador:
+2. Acceder al dashboard:
    - URL local: http://localhost:8501
    - URL de red: http://[TU_IP]:8501
 
-## Importación de Dispositivos
+### 2. Flujo de Trabajo
 
-Puedes importar una lista de dispositivos desde un archivo Excel, CSV o JSON usando una plantilla robusta y fácil de usar.
+#### A. Configuración de Pesos
+1. Seleccionar método de asignación:
+   - **Pesos Recomendados**: Ideal para evaluaciones estándar
+   - **Ajuste Manual**: Para personalización directa
+   - **Comparación por Pares**: Para análisis detallado AHP
 
-- Descarga la plantilla desde el dashboard (botón "Descargar plantilla Excel").
-- **No cambies los nombres de las columnas**: el sistema solo acepta los nombres exactos de la plantilla, sin variantes ni traducciones.
-- La plantilla incluye una hoja de ayuda con la descripción y unidad de cada campo, y una advertencia destacada.
-- Los nombres de las columnas son cortos, en minúsculas, sin tildes ni espacios, y compatibles con cualquier sistema:
+2. Guardar configuraciones personalizadas:
+   - Asignar nombre descriptivo
+   - Verificar consistencia (en caso de AHP)
+   - Aplicar a dispositivos existentes o futuros
+
+#### B. Ingreso de Dispositivos
+1. **Método Manual**:
+   - Completar formulario con datos del dispositivo
+   - Verificar valores y unidades
+   - Añadir al sistema
+
+2. **Importación Masiva**:
+   - Descargar plantilla Excel/CSV/JSON
+   - Completar datos manteniendo nombres de columnas
+   - Importar y validar
+   - Añadir dispositivos individualmente o en grupo
+
+#### C. Análisis y Resultados
+1. Calcular índice de sostenibilidad
+2. Revisar resultados individuales y globales
+3. Exportar resultados si es necesario
+
+### 3. Importación de Dispositivos
+
+#### Plantilla de Importación
+La plantilla incluye los siguientes campos (nombres exactos requeridos):
 
 | Columna                | Descripción y unidad                                                        |
 |------------------------|-----------------------------------------------------------------------------|
@@ -91,26 +127,27 @@ Puedes importar una lista de dispositivos desde un archivo Excel, CSV o JSON usa
 | peso_nuevo_g           | Peso total del dispositivo cuando es nuevo (gramos).                        |
 | peso_final_g           | Peso final del dispositivo después del uso (gramos).                        |
 
-- Puedes importar archivos en formato **.xlsx, .csv o .json**.
-- El sistema valida automáticamente los datos y muestra advertencias si falta algún campo obligatorio.
-- Tras importar, puedes añadir los dispositivos individualmente o todos juntos al sistema.
-- El flujo de importación es robusto: el uploader desaparece tras importar, y solo se muestra la lista de dispositivos pendientes de añadir.
-- Puedes cancelar la importación en cualquier momento y limpiar el estado.
+#### Consideraciones Importantes sobre importaciones
+> **Nota:** No modifiques los nombres de las columnas en la plantilla. El sistema requiere los nombres exactos.
+- **Unidades**: Respetar las unidades especificadas para cada campo
+- **Validación**: El sistema valida automáticamente los datos
+- **Cancelación**: Puedes cancelar la importación en cualquier momento
 
-## Guía Rápida
+### 4. Método de Cálculo
 
-1. **Definir Pesos**:
-   - Selecciona el método de asignación de pesos (recomendados, manual o comparación por pares).
-   - Ajusta y guarda configuraciones personalizadas si lo deseas.
+El índice de sostenibilidad se calcula en dos pasos:
 
-2. **Ingresar Dispositivos**:
-   - Completa el formulario manualmente **o importa una lista usando la plantilla**.
-   - **Recuerda:** solo se aceptan los nombres de columna exactos de la plantilla.
-   - Añade los dispositivos individualmente o todos juntos.
+1. **Normalización de Métricas**:
+   - Cada métrica se normaliza a una escala de 0-10
+   - Valores más altos indican mejor sostenibilidad
+   - Se consideran rangos de referencia para cada métrica
 
-3. **Calcular Resultados**:
-   - Presiona "Calcular Índice de Sostenibilidad" para ver los resultados individuales y globales.
-   - Exporta los resultados a Excel si lo deseas.
+2. **Cálculo del Índice**:
+   - Combinación ponderada de métricas normalizadas
+   - Pesos asignados según el método seleccionado
+   - Resultado final en escala de 0-10
+
+> **Interpretación:** Un índice cercano a 10 indica un dispositivo altamente sostenible; valores bajos sugieren áreas de mejora.
 
 ## Estructura del Proyecto
 
@@ -133,23 +170,6 @@ IoT/
     └── manejo_datos.py   # Utilidades de datos
 ```
 
-## Método de Cálculo
-
-El índice de sostenibilidad se calcula combinando:
-
-1. **Métricas Normalizadas**: Cada métrica se normaliza a una escala de 0-10
-2. **Pesos AHP**: Asignados mediante:
-   - Pesos recomendados basados en ODS
-   - Ajuste manual
-   - Comparación por pares
-
-El modelo considera aspectos clave de la sostenibilidad ambiental en IoT:
-- Consumo energético y eficiencia
-- Gestión de residuos electrónicos
-- Uso de energías renovables
-- Durabilidad y mantenimiento
-- Procesamiento de datos y edge computing
-
 ## Contacto
 
 Juan Camilo Pacheco - jc.pacheco@uniandes.edu.co
@@ -157,14 +177,3 @@ Natalia Andrea Ricaurte - na.ricaurtep@uniandes.edu.co
 Laura Valentina Lara - lv.larad@uniandes.edu.co
 
 Link del proyecto: https://github.com/natalia-ricaurte/IoT
-
-## Características y funcionalidades generales.
-
-- **Importación robusta de dispositivos** desde plantilla Excel/CSV/JSON.
-- **Validación automática** de campos y tipos de datos.
-- **Gestión de estado mejorada**: el uploader desaparece tras importar, y puedes cancelar la importación en cualquier momento.
-- **Hoja de ayuda en la plantilla** con descripciones y advertencia.
-- **Mapeo flexible de columnas**: aunque se recomienda no cambiar los nombres, el sistema es tolerante a variantes comunes.
-- **Adición individual o masiva** de dispositivos importados.
-- **Mensajes claros de éxito y advertencia** durante todo el flujo.
-- **Sincronización total entre plantilla, mapeo y procesamiento interno.**

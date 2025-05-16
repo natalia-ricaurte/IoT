@@ -178,11 +178,14 @@ def mostrar_pesos_calculados():
                 val = v.iloc[0]
             else:
                 val = v
-            pesos_limpios[k] = float(val)
+            try:
+                pesos_limpios[k] = float(val)
+            except (ValueError, TypeError):
+                continue
         
         # Crear DataFrame con los pesos
         metricas_list = list(pesos_limpios.keys())
-        pesos_list = [pesos_limpios[k] for k in metricas_list]
+        pesos_list = [float(pesos_limpios[k]) for k in metricas_list]
         nombres_list = [NOMBRES_METRICAS[k] for k in metricas_list]
         df_pesos = pd.DataFrame({
             'Métrica': nombres_list,

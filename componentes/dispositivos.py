@@ -67,6 +67,8 @@ def mostrar_dispositivo(dispositivo, idx):
                 'W': 'Peso final (g)'
             }
             datos = {nombres_campos[k]: v for k, v in dispositivo.items() if k in nombres_campos}
+            # Convertir todos los valores a float para asegurar consistencia
+            datos = {k: float(v) if isinstance(v, (int, float)) else v for k, v in datos.items()}
             df_datos = pd.DataFrame(datos, index=[0]).T
             df_datos.columns = ['Valor']
             st.dataframe(df_datos, use_container_width=True)
@@ -190,7 +192,7 @@ def mostrar_resultados_globales():
         if dispositivos:
             data_disp = {
                 'Nombre': [d['nombre'] for d in dispositivos],
-                'Índice de Sostenibilidad': [d['resultado']['indice_sostenibilidad'] if 'resultado' in d else None for d in dispositivos]
+                'Índice de Sostenibilidad': [float(d['resultado']['indice_sostenibilidad']) if 'resultado' in d else None for d in dispositivos]
             }
             df_disp = pd.DataFrame(data_disp)
             st.dataframe(df_disp.style.format({'Índice de Sostenibilidad': '{:.2f}'}), use_container_width=True)
