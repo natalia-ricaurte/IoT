@@ -1,0 +1,3 @@
+nombre,potencia_watt,horas_uso_diario,dias_uso_anual,peso_kg,vida_util_anios,energia_renovable_porcentaje,funcionalidad,reciclabilidad_porcentaje,baterias_vida_util,peso_bateria_gramos,mantenimientos,componentes_reemplazados,peso_componente_gramos,peso_nuevo_gramos,peso_final_gramos
+Sensor de temperatura,2,24,365,0.1,5,30,8,65,2,50,1,2,20,200,180
+Actuador de válvula,5,12,300,0.2,7,50,9,70,3,60,2,1,25,250,230 
