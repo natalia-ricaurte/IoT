@@ -5,8 +5,11 @@ import openpyxl
 from openpyxl.chart import RadarChart, Reference
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
+import pandas as pd
+import io
+import json
 
-from utilidades.constantes import NOMBRES_METRICAS, DESCRIPCION_COLUMNAS_IMPORTACION, MAPEO_COLUMNAS_IMPORTACION
+from utilidades.constantes import NOMBRES_METRICAS, MAPEO_COLUMNAS_EXPORTACION
 from utilidades.auxiliares import to_dict_flat, obtener_valor_dispositivo
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 
@@ -291,4 +294,37 @@ class ExportadorExcel:
 def exportar_resultados_excel():
     """Función principal para exportar resultados a Excel."""
     exportador = ExportadorExcel()
-    return exportador.exportar() 
+    return exportador.exportar()
+
+def exportar_lista_dispositivos(dispositivos, formato='excel'):
+    """
+    Exporta la lista de dispositivos en el formato especificado (excel, csv, json),
+    usando los nombres de columna de la plantilla para máxima compatibilidad.
+    Retorna un buffer (Excel), string codificado (CSV) o string codificado (JSON).
+    """
+    mapeo_columnas = MAPEO_COLUMNAS_EXPORTACION
+    columnas_internas = list(mapeo_columnas.keys())
+    headers = [mapeo_columnas[col] for col in columnas_internas]
+    data = []
+    for disp in dispositivos:
+        row = [disp.get(col, '') for col in columnas_internas]
+        data.append(row)
+    df = pd.DataFrame(data, columns=headers)
+    if formato == 'excel':
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Dispositivos')
+        buffer.seek(0)
+        return buffer
+    elif formato == 'csv':
+        csv = df.to_csv(index=False, sep=',', encoding='utf-8')
+        return csv.encode('utf-8')
+    elif formato == 'json':
+        data_json = [
+            {mapeo_columnas[col]: disp.get(col, '') for col in columnas_internas}
+            for disp in dispositivos
+        ]
+        json_str = json.dumps(data_json, indent=2, ensure_ascii=False)
+        return json_str.encode('utf-8')
+    else:
+        raise ValueError('Formato no soportado: ' + formato) 

@@ -177,3 +177,65 @@ Natalia Andrea Ricaurte - na.ricaurtep@uniandes.edu.co
 Laura Valentina Lara - lv.larad@uniandes.edu.co
 
 Link del proyecto: https://github.com/natalia-ricaurte/IoT
+
+### Flujo de trabajo del dashboard
+
+1. **Configuración de pesos**
+   - Selecciona el método de asignación de pesos (recomendados, manual o calculados)
+   - Los pesos activos al momento de añadir un dispositivo serán los que se usen para su cálculo
+   - El nombre de la configuración utilizada se guarda y se muestra en los resultados
+
+2. **Ingreso de dispositivos**
+   - Completa el formulario manualmente o importa una lista usando la plantilla
+   - La plantilla incluye una hoja de ayuda con la descripción y unidad de cada campo
+   - Sube el archivo en formato Excel, CSV o JSON
+   - Revisa los datos antes de añadirlos al sistema
+   - Añade los dispositivos individualmente o todos juntos
+
+3. **Gestión de dispositivos**
+   - Consulta los detalles completos de cada dispositivo
+   - Elimina dispositivos según sea necesario
+   - Descarga la lista actual de dispositivos en formato Excel, CSV o JSON
+   - Los archivos exportados mantienen los nombres de columnas de la plantilla para facilitar su reutilización
+
+4. **Cálculo y análisis**
+   - Calcula el índice de sostenibilidad para ver resultados individuales y globales
+   - Consulta los detalles del sistema y las métricas individuales
+   - Exporta los resultados completos a Excel o la lista de dispositivos en varios formatos
+
+### Exportación de datos
+
+El dashboard ofrece dos tipos de exportación:
+
+1. **Resultados completos**
+   - Formato: Excel (.xlsx)
+   - Incluye:
+     - Resumen general con índice global
+     - Tabla de pesos utilizados
+     - Lista de dispositivos y sus índices
+     - Hojas de detalle para cada dispositivo
+     - Gráficos radar y tablas de datos
+
+2. **Lista de dispositivos**
+   - Formatos disponibles: Excel (.xlsx), CSV (.csv), JSON (.json)
+   - Contiene los datos de entrada de los dispositivos
+   - Mantiene los nombres de columnas de la plantilla para facilitar su reutilización
+   - Ideal para guardar y compartir la base de dispositivos
+
+### Importación de dispositivos
+
+1. **Formato de archivo**
+   - Excel (.xlsx), CSV (.csv) o JSON (.json)
+   - Debe seguir la estructura de la plantilla
+   - Los nombres de las columnas deben coincidir con los de la plantilla
+
+2. **Proceso de importación**
+   - Sube el archivo usando el botón "Importar dispositivos"
+   - Revisa los datos en la tabla de previsualización
+   - Añade los dispositivos individualmente o todos juntos
+   - Los dispositivos importados se añaden a la lista actual
+
+3. **Compatibilidad**
+   - Los archivos exportados son compatibles con la importación
+   - Se mantienen los nombres de columnas de la plantilla
+   - Facilita la reutilización y edición de la base de dispositivos

@@ -16,7 +16,7 @@ from componentes.dispositivos import mostrar_dispositivo, mostrar_resultados_glo
 from componentes.formularios import inicializar_formulario
 from componentes.pesos_ui import mostrar_interfaz_pesos
 from servicios.ahp_servicio import mostrar_matriz_ahp
-from servicios.exportacion import exportar_resultados_excel
+from servicios.exportacion import exportar_resultados_excel, exportar_lista_dispositivos
 from servicios.importacion import generar_plantilla_excel, leer_archivo_dispositivos, generar_plantilla_json
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 from modelo import SostenibilidadIoT
@@ -640,63 +640,31 @@ if st.session_state.get('dispositivos'):
     st.markdown('---')
     st.subheader('Descargar lista de dispositivos añadidos')
     formato = st.selectbox('Selecciona el formato de descarga:', ['Excel (.xlsx)', 'CSV (.csv)', 'JSON (.json)'], key='formato_descarga_dispositivos')
-    
-    # Mapeo de nombres internos a nombres de la plantilla
-    mapeo_columnas = {
-        "nombre": "nombre",
-        "potencia": "potencia_w",
-        "horas": "horas_uso_diario",
-        "dias": "dias_uso_anio",
-        "peso": "peso_kg",
-        "vida": "vida_util_anios",
-        "energia_renovable": "energia_renovable_pct",
-        "funcionalidad": "funcionalidad_1_10",
-        "reciclabilidad": "reciclabilidad_pct",
-        "B": "baterias_vida_util",
-        "Wb": "peso_bateria_g",
-        "M": "mantenimientos",
-        "C": "componentes_reemplazados",
-        "Wc": "peso_componente_g",
-        "W0": "peso_nuevo_g",
-        "W": "peso_final_g"
+    formatos_map = {
+        'Excel (.xlsx)': 'excel',
+        'CSV (.csv)': 'csv',
+        'JSON (.json)': 'json'
     }
-    
-    columnas_internas = list(mapeo_columnas.keys())
-    headers = [mapeo_columnas[col] for col in columnas_internas]
-    
-    data = []
-    for disp in st.session_state.dispositivos:
-        row = [disp.get(col, '') for col in columnas_internas]
-        data.append(row)
-    
-    df = pd.DataFrame(data, columns=headers)
-    
-    if formato == 'Excel (.xlsx)':
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Dispositivos')
-        buffer.seek(0)
+    formato_export = formatos_map[formato]
+    buffer = exportar_lista_dispositivos(st.session_state.dispositivos, formato=formato_export)
+    if formato_export == 'excel':
         st.download_button(
             label='Descargar lista de dispositivos añadidos (Excel)',
             data=buffer,
             file_name='dispositivos_anadidos.xlsx',
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-    elif formato == 'CSV (.csv)':
-        # Convertir DataFrame a CSV con codificación UTF-8 y separador por comas
-        csv = df.to_csv(index=False, sep=',', encoding='utf-8')
+    elif formato_export == 'csv':
         st.download_button(
             label='Descargar lista de dispositivos añadidos (CSV)',
-            data=csv.encode('utf-8'),
+            data=buffer,
             file_name='dispositivos_anadidos.csv',
             mime='text/csv'
         )
-    elif formato == 'JSON (.json)':
-        data_json = [{mapeo_columnas[col]: disp.get(col, '') for col in columnas_internas} for disp in st.session_state.dispositivos]
-        json_str = json.dumps(data_json, indent=2, ensure_ascii=False)
+    elif formato_export == 'json':
         st.download_button(
             label='Descargar lista de dispositivos añadidos (JSON)',
-            data=json_str.encode('utf-8'),
+            data=buffer,
             file_name='dispositivos_anadidos.json',
             mime='application/json'
         )

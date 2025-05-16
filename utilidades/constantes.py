@@ -170,6 +170,7 @@ GUIA_USO_DASHBOARD = f"""
    - Puedes ver los detalles completos de cada dispositivo pulsando **'Mostrar detalles'**.
    - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo, junto con el nombre de la configuración de pesos aplicada.
    - Para eliminar un dispositivo, marca la casilla **'Eliminar dispositivo'** y confirma la acción con el botón correspondiente. Al eliminar cualquier dispositivo, los resultados globales se eliminan y deberás recalcular.
+   - Puedes descargar la lista actual de dispositivos en formato Excel, CSV o JSON usando el botón **'Descargar lista de dispositivos añadidos'**. Los archivos exportados mantienen los nombres de columnas de la plantilla para facilitar su reutilización.
 
 4. **Calcula y analiza los resultados**
    - Pulsa **'Calcular Índice de Sostenibilidad'** para ver los resultados individuales y globales.
@@ -184,13 +185,9 @@ GUIA_USO_DASHBOARD = f"""
      - Pesos utilizados para el cálculo global y nombre de la configuración aplicada.
      - Lista de dispositivos incluidos y su índice individual.
 
-6. **Exporta los resultados completos a Excel**
-   - Tras calcular el índice global, utiliza el botón **'Descargar Resultados Completos'** para exportar toda la información a un archivo Excel profesional.
-   - El archivo incluye:
-     - Resumen general con índice global, fecha, configuración de pesos y gráfico radar.
-     - Tabla de pesos utilizados para el cálculo global.
-     - Lista de dispositivos y sus índices.
-     - Hojas de detalle para cada dispositivo, con datos de entrada, nombre de la configuración de pesos utilizada, tabla de pesos y gráfico radar individual.
+6. **Exporta los resultados**
+   - **Resultados completos:** Tras calcular el índice global, utiliza el botón **'Descargar Resultados Completos'** para exportar toda la información a un archivo Excel profesional.
+   - **Lista de dispositivos:** Usa el botón **'Descargar lista de dispositivos añadidos'** para exportar solo los datos de entrada de los dispositivos en formato Excel, CSV o JSON. Los archivos exportados mantienen los nombres de columnas de la plantilla para facilitar su reutilización.
 
 ---
 
@@ -200,4 +197,25 @@ GUIA_USO_DASHBOARD = f"""
 - El dashboard elimina automáticamente los resultados globales al añadir o eliminar dispositivos para evitar mostrar información desactualizada.
 - Puedes guardar y cargar diferentes configuraciones de pesos tanto para el ajuste manual como para los pesos calculados mediante comparación por pares.
 - El nombre de la configuración de pesos utilizada se guarda y se muestra en todos los resultados y exportaciones para máxima trazabilidad.
-""" 
+- Los archivos exportados mantienen los nombres de columnas de la plantilla para facilitar su reutilización en futuras importaciones.
+"""
+
+# Mapeo de nombres internos a nombres de plantilla para exportación
+MAPEO_COLUMNAS_EXPORTACION = {
+    "nombre": "nombre",
+    "potencia": "potencia_w",
+    "horas": "horas_uso_diario",
+    "dias": "dias_uso_anio",
+    "peso": "peso_kg",
+    "vida": "vida_util_anios",
+    "energia_renovable": "energia_renovable_pct",
+    "funcionalidad": "funcionalidad_1_10",
+    "reciclabilidad": "reciclabilidad_pct",
+    "B": "baterias_vida_util",
+    "Wb": "peso_bateria_g",
+    "M": "mantenimientos",
+    "C": "componentes_reemplazados",
+    "Wc": "peso_componente_g",
+    "W0": "peso_nuevo_g",
+    "W": "peso_final_g"
+} 
