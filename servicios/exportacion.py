@@ -6,8 +6,8 @@ from openpyxl.chart import RadarChart, Reference
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
-from utilidades.constantes import NOMBRES_METRICAS
-from utilidades.auxiliares import to_dict_flat
+from utilidades.constantes import NOMBRES_METRICAS, DESCRIPCION_COLUMNAS_IMPORTACION, MAPEO_COLUMNAS_IMPORTACION
+from utilidades.auxiliares import to_dict_flat, obtener_valor_dispositivo
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 
 class ExportadorExcel:
@@ -133,40 +133,47 @@ class ExportadorExcel:
     def _crear_hoja_detalle_dispositivo(self, dispositivo):
         """Crea una hoja de detalle para un dispositivo específico."""
         ws_detalle = self.wb.create_sheet(f"Detalle_{dispositivo['nombre'][:20]}")
+        # Título y índice de sostenibilidad en la parte superior
         ws_detalle['A1'] = f"Detalles del Dispositivo: {dispositivo['nombre']}"
         ws_detalle['A1'].font = Font(bold=True, size=14)
-        ws_detalle['A3'] = f"Índice de Sostenibilidad: {dispositivo['resultado']['indice_sostenibilidad']:.2f}/10"
-        
-        # Datos de entrada
-        ws_detalle['A5'] = "Datos de Entrada"
-        ws_detalle['A5'].font = Font(bold=True)
-        datos_entrada = {
-            'Potencia (W)': dispositivo['potencia'],
-            'Horas uso diario': dispositivo['horas'],
-            'Días uso/año': dispositivo['dias'],
-            'Peso (kg)': dispositivo['peso'],
-            'Vida útil (años)': dispositivo['vida'],
-            'Energía renovable (%)': dispositivo['energia_renovable'],
-            'Funcionalidad': dispositivo['funcionalidad'],
-            'Reciclabilidad (%)': dispositivo['reciclabilidad']
-        }
-        
-        for i, (key, value) in enumerate(datos_entrada.items()):
-            ws_detalle[f'A{6+i}'] = key
-            ws_detalle[f'B{6+i}'] = value
-        
+        ws_detalle['D1'] = f"Índice de Sostenibilidad: {dispositivo['resultado']['indice_sostenibilidad']:.2f}/10"
+        ws_detalle['D1'].font = Font(bold=True, size=14)
+
+        # --- TABLA DE DATOS DE ENTRADA ---
+        ws_detalle['A3'] = "Datos de Entrada"
+        ws_detalle['A3'].font = Font(bold=True)
+        columnas_plantilla = [
+            "nombre", "potencia", "horas", "dias", "peso", "vida", "energia_renovable", "funcionalidad", "reciclabilidad",
+            "B", "Wb", "M", "C", "Wc", "W0", "W"
+        ]
+        fila = 4
+        ws_detalle[f'A{fila}'] = "Campo"
+        ws_detalle[f'B{fila}'] = "Valor"
+        ws_detalle[f'A{fila}'].font = ws_detalle[f'B{fila}'].font = Font(bold=True)
+        for i, col in enumerate(columnas_plantilla):
+            desc = None
+            for k, v in MAPEO_COLUMNAS_IMPORTACION.items():
+                if v == col and k in DESCRIPCION_COLUMNAS_IMPORTACION:
+                    desc = DESCRIPCION_COLUMNAS_IMPORTACION[k]
+                    break
+            if not desc:
+                desc = col
+            valor = dispositivo.get(col, '')
+            ws_detalle[f'A{fila+1+i}'] = desc
+            ws_detalle[f'B{fila+1+i}'] = valor
+        fila_despues_tabla = fila + 1 + len(columnas_plantilla)
+
         # Configuración de pesos
         nombre_config_disp = self._obtener_nombre_configuracion_dispositivo(dispositivo)
-        ws_detalle['D4'] = f"Configuración de pesos utilizada: {nombre_config_disp}"
-        ws_detalle['D4'].font = Font(bold=True)
+        ws_detalle[f'D{fila_despues_tabla+2}'] = f"Configuración de pesos utilizada: {nombre_config_disp}"
+        ws_detalle[f'D{fila_despues_tabla+2}'].font = Font(bold=True)
         
         # Tabla de pesos
-        fila_actual = self._crear_tabla_pesos(ws_detalle, 5, dispositivo.get('pesos_utilizados', {}))
+        fila_actual = self._crear_tabla_pesos(ws_detalle, fila_despues_tabla+2, dispositivo.get('pesos_utilizados', {}))
         
         # Métricas normalizadas y gráfico
         ws_detalle[f'G5'] = "Métricas Normalizadas"
         ws_detalle[f'G5'].font = Font(bold=True)
-        
         metricas = []
         valores = []
         fila_metricas = 6
@@ -175,7 +182,6 @@ class ExportadorExcel:
             ws_detalle[f'H{fila_metricas+i}'] = value
             metricas.append(NOMBRES_METRICAS[key])
             valores.append(value)
-        
         self._crear_grafico_radar(
             ws_detalle,
             fila_metricas,
