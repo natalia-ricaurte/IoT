@@ -710,41 +710,52 @@ if st.session_state.dispositivos:
 # --- MOSTRAR RESULTADOS GLOBALES ---
 mostrar_resultados_globales()
 
+# --- SECCIÓN DE EXPORTACIÓN DE RESULTADOS GLOBALES ---
+if st.session_state.get('resultado_global'):
+    st.markdown('---')
+    buffer = exportar_resultados_excel()
+    st.download_button(
+        label='⬇️ Descargar resultados globales (Excel)',
+        data=buffer,
+        file_name='resultados_globales.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 # --- SECCIÓN DE DESCARGA EN EXPANDER ---
 if st.session_state.get('dispositivos'):
     st.markdown('---')
     with st.expander('⬇️ Descargar lista de dispositivos añadidos'):
         solo_seleccionados = st.checkbox("Incluir solo dispositivos seleccionados para el cálculo global")
-    formato = st.selectbox('Selecciona el formato de descarga:', ['Excel (.xlsx)', 'CSV (.csv)', 'JSON (.json)'], key='formato_descarga_dispositivos')
-    formatos_map = {
-        'Excel (.xlsx)': 'excel',
-        'CSV (.csv)': 'csv',
-        'JSON (.json)': 'json'
-    }
-    formato_export = formatos_map[formato]
+        formato = st.selectbox('Selecciona el formato de descarga:', ['Excel (.xlsx)', 'CSV (.csv)', 'JSON (.json)'], key='formato_descarga_dispositivos')
+        formatos_map = {
+            'Excel (.xlsx)': 'excel',
+            'CSV (.csv)': 'csv',
+            'JSON (.json)': 'json'
+        }
+        formato_export = formatos_map[formato]
         dispositivos_exportar = obtener_dispositivos_seleccionados() if solo_seleccionados else st.session_state.dispositivos
         buffer = exportar_lista_dispositivos(dispositivos_exportar, formato=formato_export)
-    if formato_export == 'excel':
-        st.download_button(
-            label='Descargar lista de dispositivos añadidos (Excel)',
-            data=buffer,
-            file_name='dispositivos_anadidos.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-    elif formato_export == 'csv':
-        st.download_button(
-            label='Descargar lista de dispositivos añadidos (CSV)',
-            data=buffer,
-            file_name='dispositivos_anadidos.csv',
-            mime='text/csv'
-        )
-    elif formato_export == 'json':
-        st.download_button(
-            label='Descargar lista de dispositivos añadidos (JSON)',
-            data=buffer,
-            file_name='dispositivos_anadidos.json',
-            mime='application/json'
-        )
+        if formato_export == 'excel':
+            st.download_button(
+                label='Descargar lista de dispositivos añadidos (Excel)',
+                data=buffer,
+                file_name='dispositivos_anadidos.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        elif formato_export == 'csv':
+            st.download_button(
+                label='Descargar lista de dispositivos añadidos (CSV)',
+                data=buffer,
+                file_name='dispositivos_anadidos.csv',
+                mime='text/csv'
+            )
+        elif formato_export == 'json':
+            st.download_button(
+                label='Descargar lista de dispositivos añadidos (JSON)',
+                data=buffer,
+                file_name='dispositivos_anadidos.json',
+                mime='application/json'
+            )
 
 # --- PIE DE PÁGINA ---
 st.markdown(
