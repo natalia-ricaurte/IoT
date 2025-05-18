@@ -22,7 +22,7 @@ from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 from modelo import SostenibilidadIoT
 
 # --- INICIALIZACIÓN DE LA APLICACIÓN ---
-st.set_page_config(page_title="Dashboard Sostenibilidad IoT", page_icon="🌱",layout="wide")
+st.set_page_config(page_title="Dashboard Sostenibilidad IoT", page_icon="🌱", layout="wide")
 
 # Inicializar estado
 inicializar_estado()
