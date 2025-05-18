@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 from componentes.graficos import radar_chart
 from utilidades.constantes import NOMBRES_METRICAS
-from utilidades.auxiliares import to_dict_flat
+from utilidades.auxiliares import to_dict_flat, crear_snapshot_pesos
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 
 def mostrar_dispositivo(dispositivo, idx):
@@ -113,6 +113,17 @@ def mostrar_resultados_globales():
     if "resultado_global" not in st.session_state:
         return
 
+    # Determinar los pesos usados en el cálculo global
+    if "pesos_ahp" in st.session_state and st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
+        pesos_global = st.session_state.pesos_ahp
+    elif st.session_state.modo_pesos_radio == "Ajuste Manual":
+        pesos_manuales = {k: st.session_state.get(f"peso_manual_{k}", 0) for k in NOMBRES_METRICAS}
+        pesos_global, _ = validar_pesos_manuales(pesos_manuales)
+    else:
+        pesos_global = obtener_pesos_recomendados()
+    # Guardar snapshot de pesos globales para mostrar el nombre de la configuración
+    st.session_state['snapshot_pesos'] = crear_snapshot_pesos(pesos_global, st.session_state.modo_pesos_radio)
+
     st.markdown("---")
     resultado_global = st.session_state.resultado_global
     promedio_total = resultado_global["promedio_total"]
@@ -165,26 +176,10 @@ def mostrar_resultados_globales():
             st.warning("Atención: los dispositivos fueron evaluados con diferentes configuraciones de pesos. Los índices individuales pueden no ser directamente comparables.")
             
         st.markdown("**Pesos utilizados para el cálculo global**")
-        if "pesos_ahp" in st.session_state and st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
-            pesos_global = st.session_state.pesos_ahp
-            nombre_config = "Pesos Calculados"
-            for nombre_config, config in st.session_state.configuraciones_ahp.items():
-                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_global):
-                    nombre_config = f"Configuración Calculada: {nombre_config}"
-                    break
-        elif st.session_state.modo_pesos_radio == "Ajuste Manual":
-            pesos_manuales = {k: st.session_state[f"peso_manual_{k}"] for k in NOMBRES_METRICAS}
-            pesos_global, _ = validar_pesos_manuales(pesos_manuales)
-            nombre_config = "Pesos Manuales Personalizados"
-            for nombre_config, config in st.session_state.pesos_guardados.items():
-                if to_dict_flat(config) == to_dict_flat(pesos_global):
-                    nombre_config = f"Configuración Manual: {nombre_config}"
-                    break
-        else:
-            pesos_global = obtener_pesos_recomendados()
-            nombre_config = "Pesos Recomendados"
-            
+        # Obtener el nombre de la configuración del snapshot de pesos
+        nombre_config = st.session_state.get('snapshot_pesos', {}).get('nombre_configuracion', 'Desconocido')
         st.markdown(f"**Configuración de pesos:** {nombre_config}")
+        
         pesos_limpios = {}
         for k, v in pesos_global.items():
             if isinstance(v, dict):

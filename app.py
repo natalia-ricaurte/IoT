@@ -10,7 +10,7 @@ import streamlit as st
 
 # Módulos locales
 from utilidades.constantes import NOMBRES_METRICAS, FORM_KEYS, GUIA_USO_DASHBOARD
-from utilidades.auxiliares import to_dict_flat, extraer_valor_peso
+from utilidades.auxiliares import crear_snapshot_pesos, to_dict_flat, extraer_valor_peso
 from utilidades.estado import inicializar_estado, reiniciar_estado
 from componentes.dispositivos import mostrar_dispositivo, mostrar_resultados_globales
 from componentes.formularios import inicializar_formulario
@@ -86,6 +86,8 @@ st.markdown("## Descripción de Métricas y Guía de Uso")
 with st.expander("Ver detalles y guía de uso"):
     st.markdown(GUIA_USO_DASHBOARD)
 
+st.markdown('---')
+
 # --- SECCIÓN DE IMPORTACIÓN DE DISPOSITIVOS ---
 st.markdown("## Importar lista de dispositivos")
 import_container = st.container()
@@ -127,21 +129,22 @@ with import_container:
         st.session_state['pesos_manuales'] = pesos_manuales_actual
         st.rerun()
     
-    buffer = generar_plantilla_excel()
-    st.download_button(
-        label="Descargar plantilla Excel (.xlsx)",
-        data=buffer,
-        file_name="plantilla_dispositivos.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    # Botón para descargar plantilla JSON
-    buffer_json = generar_plantilla_json()
-    st.download_button(
-        label="Descargar plantilla JSON",
-        data=buffer_json,
-        file_name="plantilla_dispositivos.json",
-        mime="application/json"
-    )
+    # --- Botones de descarga de plantillas en un expander ---
+    with st.expander("Descargar plantillas de importación"):
+        buffer = generar_plantilla_excel()
+        st.download_button(
+            label="Descargar plantilla Excel (.xlsx)",
+            data=buffer,
+            file_name="plantilla_dispositivos.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        buffer_json = generar_plantilla_json()
+        st.download_button(
+            label="Descargar plantilla JSON",
+            data=buffer_json,
+            file_name="plantilla_dispositivos.json",
+            mime="application/json"
+        )
     st.caption("Recuerda: no cambies los nombres de las columnas (Excel) o claves (JSON) en las plantillas. Deben coincidir exactamente para que la importación funcione.")
 
     # Mostrar uploader solo si mostrar_importar es True
@@ -211,6 +214,7 @@ with import_container:
 
     # Mostrar la lista de dispositivos importados aunque mostrar_importar sea False
     if 'dispositivos_importados' in st.session_state and st.session_state['dispositivos_importados']:
+        st.markdown('---')
         # Mostrar mensaje de éxito de importación si existe
         if 'mensaje_importacion' in st.session_state:
             st.success(st.session_state['mensaje_importacion'])
@@ -220,7 +224,7 @@ with import_container:
         """)
         for idx, disp in enumerate(st.session_state['dispositivos_importados']):
             with st.container():
-                col1, col2 = st.columns([5, 1])
+                col1, col2, col3 = st.columns([5, 1, 1])
                 nombre = disp.get('nombre', 'Sin nombre')
                 potencia = disp.get('potencia', 'N/A')
                 vida = disp.get('vida', 'N/A')
@@ -231,20 +235,16 @@ with import_container:
                 if col2.button("Ver detalles" if not st.session_state[key_exp] else "Ocultar detalles", key=f"btn_det_import_{idx}"):
                     st.session_state[key_exp] = not st.session_state[key_exp]
                     st.rerun()
-                if st.session_state[key_exp]:
-                    st.write(disp)
-                if st.button("Añadir dispositivo al sistema", key=f"btn_add_import_{idx}"):
+                if col3.button("Añadir dispositivo al sistema", key=f"btn_add_import_{idx}"):
                     # Guardar el estado actual de los pesos
                     modo_pesos_actual = st.session_state.modo_pesos_radio
                     pesos_ahp_actual = st.session_state.get('pesos_ahp', None)
                     pesos_manuales_actual = st.session_state.get('pesos_manuales', {})
-                    
                     # Guardar los valores individuales de los pesos manuales
                     pesos_manuales_individuales = {}
                     if modo_pesos_actual == "Ajuste Manual":
                         for k in NOMBRES_METRICAS:
                             pesos_manuales_individuales[k] = st.session_state.get(f"peso_manual_{k}")
-                    
                     # Obtener pesos activos
                     if modo_pesos_actual == "Calcular nuevos pesos":
                         if pesos_ahp_actual:
@@ -262,13 +262,16 @@ with import_container:
                         pesos_usuario, _ = validar_pesos_manuales(pesos_manuales)
                         nombre_config_pesos = "Pesos Manuales Personalizados"
                         for nombre_config_manual, config in st.session_state.pesos_guardados.items():
-                            if to_dict_flat(config) == to_dict_flat(pesos_usuario):
+                            config_normalizada = {k: float(v) for k, v in config.items()}
+                            suma = sum(config_normalizada.values())
+                            if suma != 1.0:
+                                config_normalizada = {k: v/suma for k, v in config_normalizada.items()}
+                            if to_dict_flat(config_normalizada) == to_dict_flat(pesos_usuario):
                                 nombre_config_pesos = f"Configuración Manual: {nombre_config_manual}"
                                 break
                     else:
                         pesos_usuario = obtener_pesos_recomendados()
                         nombre_config_pesos = "Pesos Recomendados"
-
                     sensor = SostenibilidadIoT(nombre)
                     sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in pesos_usuario.items()}
                     sensor.calcular_consumo_energia(
@@ -302,12 +305,7 @@ with import_container:
                         "pesos_utilizados": pesos_usuario,
                         "resultado": resultado,
                         "snapshot_form": disp.copy(),
-                        "snapshot_pesos": {
-                            "modo": modo_pesos_actual,
-                            "nombre_configuracion": nombre_config_pesos,
-                            "pesos_manuales": pesos_manuales_actual,
-                            "pesos_ahp": pesos_ahp_actual
-                        }
+                        "snapshot_pesos": crear_snapshot_pesos(pesos_usuario, modo_pesos_actual)
                     })
                     st.session_state.dispositivos.append(dispositivo_data)
                     actualizar_seleccion_dispositivos()  # Actualizar selección al añadir dispositivo
@@ -317,21 +315,20 @@ with import_container:
                             del st.session_state[var]
                     if 'mensaje_importacion' in st.session_state:
                         del st.session_state['mensaje_importacion']
-                    
                     # Restaurar el estado de los pesos
                     st.session_state.modo_pesos_radio = modo_pesos_actual
                     if pesos_ahp_actual:
                         st.session_state.pesos_ahp = pesos_ahp_actual
                     if pesos_manuales_actual:
                         st.session_state.pesos_manuales = pesos_manuales_actual
-                    
                     # Restaurar los valores individuales de los pesos manuales
                     if modo_pesos_actual == "Ajuste Manual":
                         for k, v in pesos_manuales_individuales.items():
                             st.session_state[f"peso_manual_{k}"] = v
-                    
                     st.success(f"Dispositivo '{nombre}' añadido correctamente al sistema.")
                     st.rerun()
+                if st.session_state[key_exp]:
+                    st.write(disp)
         st.info("Cuando estés listo, podrás añadir los dispositivos individualmente o todos juntos al sistema. Recuerda seleccionar los pesos antes de añadirlos.")
 
         # Botón para añadir todos los dispositivos importados
@@ -365,7 +362,12 @@ with import_container:
                         pesos_usuario, _ = validar_pesos_manuales(pesos_manuales)
                         nombre_config_pesos = "Pesos Manuales Personalizados"
                         for nombre_config_manual, config in st.session_state.pesos_guardados.items():
-                            if to_dict_flat(config) == to_dict_flat(pesos_usuario):
+                            # Normalizar la configuración guardada antes de comparar
+                            config_normalizada = {k: float(v) for k, v in config.items()}
+                            suma = sum(config_normalizada.values())
+                            if suma != 1.0:
+                                config_normalizada = {k: v/suma for k, v in config_normalizada.items()}
+                            if to_dict_flat(config_normalizada) == to_dict_flat(pesos_usuario):
                                 nombre_config_pesos = f"Configuración Manual: {nombre_config_manual}"
                                 break
                     else:
@@ -405,12 +407,7 @@ with import_container:
                         "pesos_utilizados": pesos_usuario,
                         "resultado": resultado,
                         "snapshot_form": disp.copy(),
-                        "snapshot_pesos": {
-                            "modo": modo_pesos_actual,
-                            "nombre_configuracion": nombre_config_pesos,
-                            "pesos_manuales": pesos_manuales_actual,
-                            "pesos_ahp": pesos_ahp_actual
-                        }
+                        "snapshot_pesos": crear_snapshot_pesos(pesos_usuario, modo_pesos_actual)
                     })
                     nuevos_dispositivos.append(dispositivo_data)
                 st.session_state.dispositivos.extend(nuevos_dispositivos)
@@ -509,7 +506,12 @@ if submitted:
         # Buscar nombre de la configuración manual activa
         nombre_config_pesos = "Pesos Manuales Personalizados"
         for nombre_config_manual, config in st.session_state.pesos_guardados.items():
-            if to_dict_flat(config) == to_dict_flat(pesos_usuario):
+            # Normalizar la configuración guardada antes de comparar
+            config_normalizada = {k: float(v) for k, v in config.items()}
+            suma = sum(config_normalizada.values())
+            if suma != 1.0:
+                config_normalizada = {k: v/suma for k, v in config_normalizada.items()}
+            if to_dict_flat(config_normalizada) == to_dict_flat(pesos_usuario):
                 nombre_config_pesos = f"Configuración Manual: {nombre_config_manual}"
                 break
     else:
@@ -560,12 +562,7 @@ if submitted:
         "resultado": resultado,
         # Guardar snapshot del formulario y pesos
         "snapshot_form": {k: st.session_state[f"form_{k}"] for k in FORM_KEYS},
-        "snapshot_pesos": {
-            "modo": st.session_state.modo_pesos_radio,
-            "nombre_configuracion": nombre_config_pesos,
-            "pesos_manuales": st.session_state.get("pesos_manuales", {}),
-            "pesos_ahp": st.session_state.get("pesos_ahp", {})
-        }
+        "snapshot_pesos": crear_snapshot_pesos(pesos_usuario, st.session_state.modo_pesos_radio)
     }
 
     st.session_state.dispositivos.append(dispositivo_data)

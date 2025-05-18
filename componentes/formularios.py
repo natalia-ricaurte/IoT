@@ -3,7 +3,7 @@ import uuid
 from utilidades.constantes import FORM_KEYS, NOMBRES_METRICAS
 from modelo import SostenibilidadIoT
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
-from utilidades.auxiliares import to_dict_flat
+from utilidades.auxiliares import to_dict_flat, crear_snapshot_pesos
 
 def inicializar_formulario():
     """Inicializa los valores del formulario en el session_state si no existen."""
@@ -201,12 +201,7 @@ def procesar_formulario(datos_formulario):
         "resultado": resultado,
         # Guardar snapshot del formulario y pesos
         "snapshot_form": {k: st.session_state[f"form_{k}"] for k in FORM_KEYS},
-        "snapshot_pesos": {
-            "modo": st.session_state.modo_pesos_radio,
-            "nombre_configuracion": nombre_config_pesos,
-            "pesos_manuales": st.session_state.get("pesos_manuales", {}),
-            "pesos_ahp": st.session_state.get("pesos_ahp", {})
-        }
+        "snapshot_pesos": crear_snapshot_pesos(pesos_usuario, st.session_state.modo_pesos_radio)
     }
 
     st.session_state.dispositivos.append(dispositivo_data)
