@@ -143,19 +143,27 @@ def mostrar_resultados_globales():
     # --- Detalles del sistema ---
     with st.expander("Detalles del sistema"):
         dispositivos = st.session_state.dispositivos
-        st.markdown(f"**Cantidad total de dispositivos evaluados:** {len(dispositivos)}")
-        indices = [d['resultado']['indice_sostenibilidad'] for d in dispositivos if 'resultado' in d]
+        dispositivos_incluidos = [d for d in dispositivos if st.session_state.dispositivos_seleccionados.get(d['id'], True)]
+        
+        st.markdown(f"**Cantidad total de dispositivos evaluados:** {len(dispositivos_incluidos)}")
+        if len(dispositivos) != len(dispositivos_incluidos):
+            st.info(f"⚠️ Nota: {len(dispositivos) - len(dispositivos_incluidos)} dispositivos fueron excluidos del cálculo.")
+            
+        indices = [d['resultado']['indice_sostenibilidad'] for d in dispositivos_incluidos if 'resultado' in d]
         if len(indices) > 1:
             std = np.std(indices)
             st.markdown(f"**Desviación estándar de los índices individuales:** {std:.2f}")
         else:
             st.markdown("**Desviación estándar de los índices individuales:** N/A")
+            
         if 'fecha_calculo_global' not in st.session_state:
             st.session_state.fecha_calculo_global = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         st.markdown(f"**Fecha y hora del cálculo global:** {st.session_state.fecha_calculo_global}")
-        pesos_usados = [str(d.get('pesos_utilizados', {})) for d in dispositivos]
+        
+        pesos_usados = [str(d.get('pesos_utilizados', {})) for d in dispositivos_incluidos]
         if len(set(pesos_usados)) > 1:
             st.warning("Atención: los dispositivos fueron evaluados con diferentes configuraciones de pesos. Los índices individuales pueden no ser directamente comparables.")
+            
         st.markdown("**Pesos utilizados para el cálculo global**")
         if "pesos_ahp" in st.session_state and st.session_state.modo_pesos_radio == "Calcular nuevos pesos":
             pesos_global = st.session_state.pesos_ahp
@@ -175,6 +183,7 @@ def mostrar_resultados_globales():
         else:
             pesos_global = obtener_pesos_recomendados()
             nombre_config = "Pesos Recomendados"
+            
         st.markdown(f"**Configuración de pesos:** {nombre_config}")
         pesos_limpios = {}
         for k, v in pesos_global.items():
@@ -188,11 +197,12 @@ def mostrar_resultados_globales():
         df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)
         df_pesos = df_pesos.rename_axis('Métrica').reset_index()
         st.dataframe(df_pesos.style.format({'Peso': '{:.3f}'}), use_container_width=True)
+        
         st.markdown("**Dispositivos incluidos en el cálculo global**")
-        if dispositivos:
+        if dispositivos_incluidos:
             data_disp = {
-                'Nombre': [d['nombre'] for d in dispositivos],
-                'Índice de Sostenibilidad': [float(d['resultado']['indice_sostenibilidad']) if 'resultado' in d else None for d in dispositivos]
+                'Nombre': [d['nombre'] for d in dispositivos_incluidos],
+                'Índice de Sostenibilidad': [float(d['resultado']['indice_sostenibilidad']) if 'resultado' in d else None for d in dispositivos_incluidos]
             }
             df_disp = pd.DataFrame(data_disp)
             st.dataframe(df_disp.style.format({'Índice de Sostenibilidad': '{:.2f}'}), use_container_width=True)

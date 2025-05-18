@@ -170,6 +170,7 @@ GUIA_USO_DASHBOARD = f"""
    - Puedes ver los detalles completos de cada dispositivo pulsando **'Mostrar detalles'**.
    - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo, junto con el nombre de la configuración de pesos aplicada.
    - Para eliminar un dispositivo, marca la casilla **'Eliminar dispositivo'** y confirma la acción con el botón correspondiente. Al eliminar cualquier dispositivo, los resultados globales se eliminan y deberás recalcular.
+   - Puedes seleccionar o deseleccionar dispositivos para el cálculo global. La lista exportada de dispositivos incluye todos los dispositivos añadidos, independientemente de su estado de selección.
    - Puedes descargar la lista actual de dispositivos en formato Excel, CSV o JSON usando el botón **'Descargar lista de dispositivos añadidos'**. Los archivos exportados mantienen los nombres de columnas de la plantilla para facilitar su reutilización.
 
 4. **Calcula y analiza los resultados**

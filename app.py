@@ -28,6 +28,39 @@ st.set_page_config(page_title="Dashboard Sostenibilidad IoT", page_icon="🌱", 
 inicializar_estado()
 inicializar_formulario()
 
+# Inicializar estado de selección de dispositivos
+if 'dispositivos_seleccionados' not in st.session_state:
+    st.session_state.dispositivos_seleccionados = {}
+
+def actualizar_seleccion_dispositivos():
+    """Actualiza el estado de selección de dispositivos."""
+    if 'dispositivos_seleccionados' not in st.session_state:
+        st.session_state.dispositivos_seleccionados = {}
+    
+    # Mantener solo las selecciones de dispositivos que aún existen
+    dispositivos_actuales = {disp['id']: disp for disp in st.session_state.dispositivos}
+    st.session_state.dispositivos_seleccionados = {
+        id: seleccionado 
+        for id, seleccionado in st.session_state.dispositivos_seleccionados.items()
+        if id in dispositivos_actuales
+    }
+    
+    # Añadir nuevos dispositivos como seleccionados por defecto
+    for id in dispositivos_actuales:
+        if id not in st.session_state.dispositivos_seleccionados:
+            st.session_state.dispositivos_seleccionados[id] = True
+    
+    # Eliminar resultados globales si existen
+    if 'resultado_global' in st.session_state:
+        del st.session_state.resultado_global
+
+def obtener_dispositivos_seleccionados():
+    """Retorna la lista de dispositivos que están actualmente seleccionados."""
+    return [
+        d for d in st.session_state.dispositivos
+        if st.session_state.dispositivos_seleccionados.get(d['id'], True)
+    ]
+
 # --- CONTROL DE NAVEGACIÓN ---
 if st.session_state.matriz_ahp_abierta:
     mostrar_matriz_ahp()
@@ -45,6 +78,8 @@ if st.button("Reiniciar"):
         del st.session_state['importar_csv']
     if 'mostrar_importar' in st.session_state:
         st.session_state['mostrar_importar'] = False
+    if 'dispositivos_seleccionados' in st.session_state:
+        del st.session_state['dispositivos_seleccionados']
     st.rerun()
 
 st.markdown("## Descripción de Métricas y Guía de Uso")
@@ -275,6 +310,7 @@ with import_container:
                         }
                     })
                     st.session_state.dispositivos.append(dispositivo_data)
+                    actualizar_seleccion_dispositivos()  # Actualizar selección al añadir dispositivo
                     st.session_state['dispositivos_importados'] = [d for d in st.session_state['dispositivos_importados'] if d.get('_import_hash') != disp.get('_import_hash')]
                     for var in ["resultado_global", "fecha_calculo_global"]:
                         if var in st.session_state:
@@ -378,6 +414,7 @@ with import_container:
                     })
                     nuevos_dispositivos.append(dispositivo_data)
                 st.session_state.dispositivos.extend(nuevos_dispositivos)
+                actualizar_seleccion_dispositivos()  # Actualizar selección al añadir dispositivos
                 st.session_state['dispositivos_importados'] = []
                 if 'mensaje_importacion' in st.session_state:
                     del st.session_state['mensaje_importacion']
@@ -394,6 +431,13 @@ with import_container:
                     for k, v in pesos_manuales_individuales.items():
                         st.session_state[f"peso_manual_{k}"] = v
                 st.success("Todos los dispositivos importados han sido añadidos correctamente al sistema.")
+                st.rerun()
+
+        # Botón para limpiar la lista de dispositivos importados
+        if st.button("Limpiar lista de dispositivos importados", key="btn_limpiar_importados"):
+            st.session_state['dispositivos_importados'] = []
+            if 'mensaje_importacion' in st.session_state:
+                del st.session_state['mensaje_importacion']
                 st.rerun()
 
 # Inicializar en session_state si no existen
@@ -525,73 +569,36 @@ if submitted:
     }
 
     st.session_state.dispositivos.append(dispositivo_data)
+    actualizar_seleccion_dispositivos()  # Actualizar selección al añadir dispositivo
 
     st.success(f"Dispositivo '{nombre}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
     st.rerun()
-
-# --- BOTÓN DE REFRESH ---
-if 'modo_edicion' in st.session_state and st.session_state.modo_edicion:
-    st.warning("Termina de editar o cancelar la edición de un dispositivo antes de calcular el índice global.")
-    st.button("Calcular Indice de Sostenibilidad", disabled=True)
-else:
-    if st.button("Calcular Indice de Sostenibilidad"):
-        if not st.session_state.dispositivos:
-            st.warning("No hay dispositivos añadidos.")
-        else:
-            total_indices = []
-            metricas_totales = []
-
-            for idx, dispositivo in enumerate(st.session_state.dispositivos):
-                # Si no existe resultado, recalcularlo usando los pesos guardados
-                if "resultado" not in dispositivo or not dispositivo["calculo_realizado"]:
-                    sensor = SostenibilidadIoT(dispositivo["nombre"])
-                    sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in dispositivo["pesos_utilizados"].items()}
-                    sensor.calcular_consumo_energia(dispositivo["potencia"], dispositivo["horas"], dispositivo["dias"])
-                    sensor.calcular_huella_carbono()
-                    sensor.calcular_ewaste(dispositivo["peso"], dispositivo["vida"])
-                    sensor.calcular_energia_renovable(dispositivo["energia_renovable"])
-                    sensor.calcular_eficiencia_energetica(dispositivo["funcionalidad"])
-                    sensor.calcular_durabilidad(dispositivo["vida"])
-                    sensor.calcular_reciclabilidad(dispositivo["reciclabilidad"])
-                    sensor.calcular_indice_mantenimiento(
-                        dispositivo["B"], dispositivo["Wb"], dispositivo["M"], 
-                        dispositivo["C"], dispositivo["Wc"], dispositivo["W0"], dispositivo["W"]
-                    )
-                    resultado = sensor.calcular_sostenibilidad()
-                    dispositivo["resultado"] = resultado
-                    dispositivo["calculo_realizado"] = True
-
-                # Actualizar listas para el cálculo global
-                total_indices.append(dispositivo["resultado"]["indice_sostenibilidad"])
-                metricas_totales.append(dispositivo["resultado"]["metricas_normalizadas"])
-
-            # Cálculo del índice global
-            promedio_total = sum(total_indices) / len(total_indices)
-
-            # Calcular promedio de métricas
-            promedio_metricas = {
-                key: sum(m[key] for m in metricas_totales) / len(metricas_totales)
-                for key in metricas_totales[0]
-            }
-
-            # Guardar el resultado global
-            st.session_state.resultado_global = {
-                "promedio_total": promedio_total,
-                "promedio_metricas": promedio_metricas
-            }
-
-            st.success("Resultados actualizados correctamente.")
 
 # --- MOSTRAR RESULTADOS INDIVIDUALES ---
 if st.session_state.dispositivos:
     st.markdown("---")
     st.subheader("Resultados por Dispositivo")
 
-    dispositivos = st.session_state.dispositivos
-    num_dispositivos = len(dispositivos)
+    # Controles de selección masiva
+    col_sel1, col_sel2, col_sel3 = st.columns([1, 1, 2])
+    with col_sel1:
+        if st.button("Seleccionar Todos"):
+            st.session_state.dispositivos_seleccionados = {
+                d['id']: True for d in st.session_state.dispositivos
+            }
+            st.rerun()
+    with col_sel2:
+        if st.button("Deseleccionar Todos"):
+            st.session_state.dispositivos_seleccionados = {
+                d['id']: False for d in st.session_state.dispositivos
+            }
+            st.rerun()
+    with col_sel3:
+        num_seleccionados = sum(st.session_state.dispositivos_seleccionados.values())
+        st.markdown(f"**Dispositivos seleccionados para el cálculo global:** {num_seleccionados}/{len(st.session_state.dispositivos)}")
 
     # Mostrar resultados individuales de todos los dispositivos
-    for idx, disp in enumerate(dispositivos):
+    for idx, disp in enumerate(st.session_state.dispositivos):
         # Si no existe resultado, recalcularlo usando los pesos guardados
         if "resultado" not in disp or not disp["calculo_realizado"]:
             sensor = SostenibilidadIoT(disp["nombre"])
@@ -609,36 +616,105 @@ if st.session_state.dispositivos:
             resultado = sensor.calcular_sostenibilidad()
             disp["resultado"] = resultado
             disp["calculo_realizado"] = True
-        # Mostrar resumen y botón de expandir/ocultar detalles
+        
+        # Mostrar resumen y botones de control
         with st.container():
-            col_res, col_btn_det = st.columns([5, 1])
+            col_res, col_sel, col_btn_det = st.columns([4, 1, 1])
+            
+            # Checkbox para selección
+            if col_sel.checkbox(
+                "Incluir en cálculo",
+                value=st.session_state.dispositivos_seleccionados.get(disp['id'], True),
+                key=f"sel_{disp['id']}"
+            ):
+                if not st.session_state.dispositivos_seleccionados.get(disp['id'], False):
+                    st.session_state.dispositivos_seleccionados[disp['id']] = True
+                    if 'resultado_global' in st.session_state:
+                        del st.session_state.resultado_global
+                    st.rerun()
+            else:
+                if st.session_state.dispositivos_seleccionados.get(disp['id'], True):
+                    st.session_state.dispositivos_seleccionados[disp['id']] = False
+                    if 'resultado_global' in st.session_state:
+                        del st.session_state.resultado_global
+                    st.rerun()
+            
+            # Resumen del dispositivo
             col_res.markdown(f"**{disp['nombre']}** — Índice: {disp['resultado']['indice_sostenibilidad']:.2f}/10")
+            
+            # Botón de detalles
             key_exp = f"expandir_disp_{disp['id']}"
             if key_exp not in st.session_state:
                 st.session_state[key_exp] = False
             if col_btn_det.button("Mostrar detalles" if not st.session_state[key_exp] else "Ocultar detalles", key=f"btn_toggle_{disp['id']}"):
                 st.session_state[key_exp] = not st.session_state[key_exp]
                 st.rerun()
+            
             if st.session_state[key_exp]:
                 mostrar_dispositivo(disp, disp['id'])
+
+    # Espacio antes del botón
+    st.markdown("---")
+    st.markdown("&nbsp;", unsafe_allow_html=True)
+
+    # Botón estándar de Streamlit alineado a la izquierda, con emoji
+    if 'modo_edicion' in st.session_state and st.session_state.modo_edicion:
+        st.warning("Termina de editar o cancelar la edición de un dispositivo antes de calcular el índice global.")
+        st.button("🌍 Calcular Índice Global de Sostenibilidad", disabled=True)
+    else:
+        if st.button("🌍 Calcular Índice Global de Sostenibilidad"):
+            dispositivos_seleccionados = obtener_dispositivos_seleccionados()
+            if not dispositivos_seleccionados:
+                st.warning("No hay dispositivos seleccionados para el cálculo global.")
+            else:
+                total_indices = []
+                metricas_totales = []
+
+                for dispositivo in dispositivos_seleccionados:
+                    if "resultado" not in dispositivo or not dispositivo["calculo_realizado"]:
+                        sensor = SostenibilidadIoT(dispositivo["nombre"])
+                        sensor.pesos = {k: float(extraer_valor_peso(v)) for k, v in dispositivo["pesos_utilizados"].items()}
+                        sensor.calcular_consumo_energia(dispositivo["potencia"], dispositivo["horas"], dispositivo["dias"])
+                        sensor.calcular_huella_carbono()
+                        sensor.calcular_ewaste(dispositivo["peso"], dispositivo["vida"])
+                        sensor.calcular_energia_renovable(dispositivo["energia_renovable"])
+                        sensor.calcular_eficiencia_energetica(dispositivo["funcionalidad"])
+                        sensor.calcular_durabilidad(dispositivo["vida"])
+                        sensor.calcular_reciclabilidad(dispositivo["reciclabilidad"])
+                        sensor.calcular_indice_mantenimiento(
+                            dispositivo["B"], dispositivo["Wb"], dispositivo["M"], 
+                            dispositivo["C"], dispositivo["Wc"], dispositivo["W0"], dispositivo["W"]
+                        )
+                        resultado = sensor.calcular_sostenibilidad()
+                        dispositivo["resultado"] = resultado
+                        dispositivo["calculo_realizado"] = True
+
+                    total_indices.append(dispositivo["resultado"]["indice_sostenibilidad"])
+                    metricas_totales.append(dispositivo["resultado"]["metricas_normalizadas"])
+
+                promedio_total = sum(total_indices) / len(total_indices)
+                promedio_metricas = {
+                    key: sum(m[key] for m in metricas_totales) / len(metricas_totales)
+                    for key in metricas_totales[0]
+                }
+                st.session_state.resultado_global = {
+                    "promedio_total": promedio_total,
+                    "promedio_metricas": promedio_metricas,
+                    "dispositivos_incluidos": dispositivos_seleccionados
+                }
+                st.success("Resultados actualizados correctamente.")
+
+    # Espacio después del botón
+    st.markdown("&nbsp;", unsafe_allow_html=True)
 
 # --- MOSTRAR RESULTADOS GLOBALES ---
 mostrar_resultados_globales()
 
-    # Botón de descarga directo
-if "resultado_global" in st.session_state:
-    excel_file = exportar_resultados_excel()
-    st.download_button(
-        label="Descargar Resultados Completos",
-        data=excel_file,
-        file_name=f"sostenibilidad_iot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-# --- BOTÓN DESCARGA LISTA DE DISPOSITIVOS ---
+# --- SECCIÓN DE DESCARGA EN EXPANDER ---
 if st.session_state.get('dispositivos'):
     st.markdown('---')
-    st.subheader('Descargar lista de dispositivos añadidos')
+    with st.expander('⬇️ Descargar lista de dispositivos añadidos'):
+        solo_seleccionados = st.checkbox("Incluir solo dispositivos seleccionados para el cálculo global")
     formato = st.selectbox('Selecciona el formato de descarga:', ['Excel (.xlsx)', 'CSV (.csv)', 'JSON (.json)'], key='formato_descarga_dispositivos')
     formatos_map = {
         'Excel (.xlsx)': 'excel',
@@ -646,7 +722,8 @@ if st.session_state.get('dispositivos'):
         'JSON (.json)': 'json'
     }
     formato_export = formatos_map[formato]
-    buffer = exportar_lista_dispositivos(st.session_state.dispositivos, formato=formato_export)
+        dispositivos_exportar = obtener_dispositivos_seleccionados() if solo_seleccionados else st.session_state.dispositivos
+        buffer = exportar_lista_dispositivos(dispositivos_exportar, formato=formato_export)
     if formato_export == 'excel':
         st.download_button(
             label='Descargar lista de dispositivos añadidos (Excel)',
