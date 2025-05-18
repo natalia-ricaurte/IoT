@@ -171,26 +171,46 @@ class ExportadorExcel:
             "Mantenimientos", "Componentes reemplazados", "Peso componente (g)", "Peso nuevo (g)", "Peso final (g)"
         ]
         headers.append("Índice de Sostenibilidad")
+        headers.append("Incluido en cálculo global")  # Nueva columna
 
         for i, header in enumerate(headers):
             ws_dispositivos[f'{get_column_letter(i+1)}3'] = header
             ws_dispositivos[f'{get_column_letter(i+1)}3'].font = Font(bold=True)
 
-        # Resaltar la columna del índice
-        fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")  # Amarillo claro
+        # Resaltar solo la columna del índice
+        fill_idx = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")  # Amarillo claro
+        fill_inclusion = PatternFill(start_color="F5F5F5", end_color="F5F5F5", fill_type="solid")  # Gris muy claro
+        
         col_idx = len(columnas_internas) + 1
-        cell = ws_dispositivos[f'{get_column_letter(col_idx)}3']
-        cell.font = Font(bold=True)
-        cell.fill = fill
+        col_inclusion = col_idx + 1
+        
+        # Resaltar columna de índice
+        cell_idx = ws_dispositivos[f'{get_column_letter(col_idx)}3']
+        cell_idx.font = Font(bold=True)
+        cell_idx.fill = fill_idx
+        
+        # Estilo más sutil para columna de inclusión
+        cell_inclusion = ws_dispositivos[f'{get_column_letter(col_inclusion)}3']
+        cell_inclusion.font = Font(bold=True)
+        cell_inclusion.fill = fill_inclusion
 
         for i, dispositivo in enumerate(st.session_state.dispositivos):
+            # Datos del dispositivo
             for j, col in enumerate(columnas_internas):
                 valor = dispositivo.get(col, 'N/A')
                 ws_dispositivos[f'{get_column_letter(j+1)}{i+4}'] = valor
+            
+            # Índice de sostenibilidad (resaltado)
             cell_val = ws_dispositivos[f'{get_column_letter(col_idx)}{i+4}']
             cell_val.value = dispositivo['resultado']['indice_sostenibilidad']
-            cell_val.fill = fill
+            cell_val.fill = fill_idx
             cell_val.font = Font(bold=True)
+            
+            # Inclusión en cálculo global (estilo sutil)
+            cell_inclusion = ws_dispositivos[f'{get_column_letter(col_inclusion)}{i+4}']
+            cell_inclusion.value = "Sí" if st.session_state.dispositivos_seleccionados.get(dispositivo['id'], True) else "No"
+            cell_inclusion.fill = fill_inclusion
+            cell_inclusion.font = Font(bold=False)  # Sin negrita para el valor
 
     def _crear_hoja_detalle_dispositivo(self, dispositivo):
         """Crea una hoja de detalle para un dispositivo específico."""
@@ -199,6 +219,13 @@ class ExportadorExcel:
         ws_detalle['A1'].font = Font(bold=True, size=14)
         ws_detalle['D1'] = f"Índice de Sostenibilidad: {dispositivo['resultado']['indice_sostenibilidad']:.2f}/10"
         ws_detalle['D1'].font = Font(bold=True, size=14)
+
+        # Agregar nota de inclusión en cálculo global
+        incluido = st.session_state.dispositivos_seleccionados.get(dispositivo['id'], True)
+        ws_detalle['A2'] = f"Estado en cálculo global: {'Incluido' if incluido else 'No incluido'}"
+        ws_detalle['A2'].font = Font(bold=True, italic=True)
+        if not incluido:
+            ws_detalle['A2'].font = Font(bold=True, italic=True, color="808080")  # Gris para dispositivos no incluidos
 
         ws_detalle['A3'] = "Datos de Entrada"
         ws_detalle['A3'].font = Font(bold=True)

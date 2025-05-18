@@ -714,10 +714,11 @@ mostrar_resultados_globales()
 if st.session_state.get('resultado_global'):
     st.markdown('---')
     buffer = exportar_resultados_excel()
+    dispositivos_incluidos = len(st.session_state.resultado_global['dispositivos_incluidos'])
     st.download_button(
         label='⬇️ Descargar resultados globales (Excel)',
         data=buffer,
-        file_name='resultados_globales.xlsx',
+        file_name=f'resultados_globales_{st.session_state.resultado_global["promedio_total"]:.1f}_{dispositivos_incluidos}dispositivos_{datetime.now().strftime("%Y%m%d")}.xlsx',
         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 
@@ -739,21 +740,21 @@ if st.session_state.get('dispositivos'):
             st.download_button(
                 label='Descargar lista de dispositivos añadidos (Excel)',
                 data=buffer,
-                file_name='dispositivos_anadidos.xlsx',
+                file_name=f'dispositivos_{len(dispositivos_exportar)}_{datetime.now().strftime("%Y%m%d")}.xlsx',
                 mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
         elif formato_export == 'csv':
             st.download_button(
                 label='Descargar lista de dispositivos añadidos (CSV)',
                 data=buffer,
-                file_name='dispositivos_anadidos.csv',
+                file_name=f'dispositivos_{len(dispositivos_exportar)}_{datetime.now().strftime("%Y%m%d")}.csv',
                 mime='text/csv'
             )
         elif formato_export == 'json':
             st.download_button(
                 label='Descargar lista de dispositivos añadidos (JSON)',
                 data=buffer,
-                file_name='dispositivos_anadidos.json',
+                file_name=f'dispositivos_{len(dispositivos_exportar)}_{datetime.now().strftime("%Y%m%d")}.json',
                 mime='application/json'
             )
 
