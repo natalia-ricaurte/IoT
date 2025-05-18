@@ -7,6 +7,9 @@ from utilidades.auxiliares import to_dict_flat
 def inicializar_pesos_manuales():
     """Inicializa los pesos manuales con los valores recomendados."""
     pesos_recomendados = obtener_pesos_recomendados()
+    # Inicializar el diccionario de pesos manuales
+    st.session_state.pesos_manuales = pesos_recomendados.copy()
+    # Inicializar los pesos individuales
     for k, v in pesos_recomendados.items():
         st.session_state[f"peso_manual_{k}"] = float(v)
 
@@ -76,20 +79,28 @@ def mostrar_ajuste_manual():
         nuevo_nombre = st.text_input("Guardar configuración como", "")
         guardar = st.button("Guardar configuración")
         if guardar and nuevo_nombre:
+            # Obtener los valores actuales de los inputs
             config_actual = {k: float(st.session_state[f"peso_manual_{k}"]) for k in NOMBRES_METRICAS}
             if 'pesos_guardados' not in st.session_state:
                 st.session_state.pesos_guardados = {}
             st.session_state.pesos_guardados[nuevo_nombre] = config_actual
+            # Mantener los valores actuales en el estado
+            st.session_state.pesos_manuales = config_actual.copy()
             st.success(f"Configuración '{nuevo_nombre}' guardada correctamente.")
-            st.rerun()
+            # No hacer rerun para mantener los valores de los inputs
         # Mostrar selectbox y botones para aplicar/eliminar si hay configuraciones guardadas
         if st.session_state.get('pesos_guardados'):
             seleccion = st.selectbox("Seleccionar configuración guardada", list(st.session_state.pesos_guardados.keys()))
             col_config = st.columns(2)
             if col_config[0].button("Aplicar configuración"):
-                st.session_state.pesos_manuales = st.session_state.pesos_guardados[seleccion].copy()
-                for k in NOMBRES_METRICAS:
-                    st.session_state[f"peso_manual_{k}"] = st.session_state.pesos_manuales[k]
+                config_seleccionada = st.session_state.pesos_guardados[seleccion]
+                # Actualizar el diccionario de pesos manuales
+                st.session_state.pesos_manuales = config_seleccionada.copy()
+                # Actualizar los pesos individuales
+                for k, v in config_seleccionada.items():
+                    st.session_state[f"peso_manual_{k}"] = float(v)
+                # Forzar la actualización de los inputs
+                st.session_state.update({f"peso_manual_{k}": float(v) for k, v in config_seleccionada.items()})
                 st.success(f"Configuración '{seleccion}' aplicada correctamente.")
                 st.rerun()
             if col_config[1].button("Eliminar configuración"):
@@ -106,21 +117,34 @@ def mostrar_ajuste_manual():
     if to_dict_flat(pesos_actuales) == to_dict_flat(pesos_recomendados):
         st.success("**Configuración activa: Pesos Recomendados**")
     else:
-        st.success("**Configuración activa: Pesos Manuales Personalizados**")
+        # Verificar si los pesos actuales coinciden con alguna configuración guardada
+        nombre_config_activa = "Pesos Manuales Personalizados"
+        for nombre_config, config in st.session_state.pesos_guardados.items():
+            if to_dict_flat(config) == to_dict_flat(pesos_actuales):
+                nombre_config_activa = f"Configuración Manual: {nombre_config}"
+                break
+        st.success(f"**Configuración activa: {nombre_config_activa}**")
 
     pesos_usuario = {}
     for id, nombre_metrica in NOMBRES_METRICAS.items():
-        valor_default = float(st.session_state.get(f"peso_manual_{id}", obtener_pesos_recomendados()[id]))
+        # Obtener el valor actual del peso
+        valor_actual = st.session_state.get(f"peso_manual_{id}")
+        if valor_actual is None:
+            valor_actual = float(st.session_state.pesos_manuales.get(id, obtener_pesos_recomendados()[id]))
+            st.session_state[f"peso_manual_{id}"] = valor_actual
+        
         valor = st.number_input(
             f"{nombre_metrica}",
             min_value=0.0,
             max_value=1.0,
             step=0.01,
             format="%.3f",
-            value=valor_default,
+            value=valor_actual,
             key=f"peso_manual_{id}"
         )
         pesos_usuario[id] = float(valor)
+        # Actualizar el diccionario de pesos manuales
+        st.session_state.pesos_manuales[id] = float(valor)
 
     # Asegurar que todas las métricas están presentes
     for id in NOMBRES_METRICAS:
