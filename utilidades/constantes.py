@@ -170,12 +170,12 @@ GUIA_USO_DASHBOARD = f"""
    - Puedes ver los detalles completos de cada dispositivo pulsando **'Mostrar detalles'**.
    - Dentro de los detalles, consulta los datos de entrada y los pesos utilizados para ese dispositivo, junto con el nombre de la configuración de pesos aplicada.
    - Para eliminar un dispositivo, marca la casilla **'Eliminar dispositivo'** y confirma la acción con el botón correspondiente. Al eliminar cualquier dispositivo, los resultados globales se eliminan y deberás recalcular.
-   - Puedes seleccionar o deseleccionar dispositivos para el cálculo global. La lista exportada de dispositivos incluye todos los dispositivos añadidos, independientemente de su estado de selección.
+   - Puedes seleccionar o deseleccionar dispositivos para el cálculo global usando los checkboxes **'Incluir en cálculo'**. La lista exportada de dispositivos incluye todos los dispositivos añadidos, independientemente de su estado de selección.
    - Puedes descargar la lista actual de dispositivos en formato Excel, CSV o JSON usando el botón **'Descargar lista de dispositivos añadidos'**. Los archivos exportados mantienen los nombres de columnas de la plantilla para facilitar su reutilización.
 
 4. **Calcula y analiza los resultados**
    - Pulsa **'Calcular Índice de Sostenibilidad'** para ver los resultados individuales y globales.
-   - El índice global y los detalles del sistema solo reflejan los dispositivos actualmente en la lista.
+   - El índice global y los detalles del sistema solo reflejan los dispositivos actualmente seleccionados para el cálculo.
 
 5. **Consulta los detalles del sistema**
    - En la sección de resultados globales, expande **'Detalles del sistema'** para ver:
@@ -187,8 +187,15 @@ GUIA_USO_DASHBOARD = f"""
      - Lista de dispositivos incluidos y su índice individual.
 
 6. **Exporta los resultados**
-   - **Resultados completos:** Tras calcular el índice global, utiliza el botón **'Descargar Resultados Completos'** para exportar toda la información a un archivo Excel profesional.
-   - **Lista de dispositivos:** Usa el botón **'Descargar lista de dispositivos añadidos'** para exportar solo los datos de entrada de los dispositivos en formato Excel, CSV o JSON. Los archivos exportados mantienen los nombres de columnas de la plantilla para facilitar su reutilización.
+   - **Resultados completos:** Tras calcular el índice global, utiliza el botón **'Descargar Resultados Completos'** para exportar toda la información a un archivo Excel profesional. El archivo incluye:
+     - Hoja de resumen con el índice global y gráficos
+     - Hoja de dispositivos con todos los datos y su estado de inclusión en el cálculo
+     - Hojas de detalle individuales para cada dispositivo
+     - El nombre del archivo incluye el índice global, número de dispositivos incluidos y fecha
+   - **Lista de dispositivos:** Usa el botón **'Descargar lista de dispositivos añadidos'** para exportar los datos en formato Excel, CSV o JSON:
+     - Puedes elegir incluir solo los dispositivos seleccionados para el cálculo global
+     - Los archivos exportados mantienen los nombres de columnas de la plantilla
+     - El nombre del archivo incluye el número de dispositivos y la fecha
 
 ---
 
@@ -198,7 +205,7 @@ GUIA_USO_DASHBOARD = f"""
 - El dashboard elimina automáticamente los resultados globales al añadir o eliminar dispositivos para evitar mostrar información desactualizada.
 - Puedes guardar y cargar diferentes configuraciones de pesos tanto para el ajuste manual como para los pesos calculados mediante comparación por pares.
 - El nombre de la configuración de pesos utilizada se guarda y se muestra en todos los resultados y exportaciones para máxima trazabilidad.
-- Los archivos exportados mantienen los nombres de columnas de la plantilla para facilitar su reutilización en futuras importaciones.
+- Los archivos exportados incluyen información sobre qué dispositivos fueron incluidos en el cálculo global para facilitar el seguimiento y la trazabilidad.
 """
 
 # Mapeo de nombres internos a nombres de plantilla para exportación

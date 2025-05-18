@@ -29,12 +29,13 @@ El sistema permite asignar pesos personalizados a las métricas de sostenibilida
 - Dashboard interactivo con:
   - Gráficos radar individuales y globales
   - Tablas detalladas de resultados
-  - Exportación completa a Excel
+  - Exportación completa a Excel con trazabilidad de dispositivos incluidos
 
 ### Gestión de Dispositivos
 - Ingreso manual o importación masiva desde Excel, CSV o JSON
 - Validación automática de datos
 - Almacenamiento y recuperación de dispositivos
+- Selección flexible de dispositivos para el cálculo global
 
 ### Configuración Personalizada
 - Guardado y carga de configuraciones de pesos
@@ -96,28 +97,32 @@ streamlit run app.py
 > Nota: No modifiques los nombres de columna. El sistema valida los datos automáticamente y requiere coincidencia exacta.
 
 ### 3. Selección de Dispositivos
-- Puedes seleccionar o deseleccionar dispositivos para el cálculo global.
-- La lista exportada de dispositivos incluye todos los dispositivos añadidos, independientemente de su estado de selección.
+- Usa los checkboxes "Incluir en cálculo" para seleccionar qué dispositivos se incluirán en el cálculo global.
+- El estado de selección se mantiene y se refleja en todas las exportaciones.
+- Puedes usar los botones "Seleccionar Todos" y "Deseleccionar Todos" para una gestión rápida.
 
 ### 4. Cálculo y Resultados
 - Calcula el índice de sostenibilidad individual o global.
 - Revisa gráficos y métricas detalladas.
-- Exporta resultados en Excel.
+- Exporta resultados en Excel con información completa de trazabilidad.
 
 ## Exportación de Datos
 
 ### Resultados Completos (.xlsx)
 Incluye:
-- Índice global
+- Índice global y número de dispositivos incluidos en el nombre del archivo
+- Hoja de resumen con el índice global y gráficos
+- Hoja de dispositivos con todos los datos y su estado de inclusión en el cálculo
+- Hojas de detalle individuales para cada dispositivo
 - Tabla de pesos aplicados
-- Detalles por dispositivo
 - Gráficos y métricas normalizadas
 
 ### Lista de Dispositivos
 Formatos disponibles: .xlsx, .csv, .json
-- Contiene datos de entrada
+- Opción para incluir solo dispositivos seleccionados para el cálculo global
+- Contiene datos de entrada y estado de selección
 - Compatible con futuras importaciones
-- Incluye todos los dispositivos añadidos, incluso los no seleccionados para el cálculo global.
+- Nombre del archivo incluye el número de dispositivos y fecha
 
 ## Estructura del Proyecto
 
@@ -141,4 +146,37 @@ IoT/
 
 ## Oportunidades de Mejora
 
+- **Gestión de Cuentas**: Implementar un sistema de autenticación y gestión de cuentas que permita a los usuarios guardar su progreso, configuraciones y dispositivos, asegurando la persistencia de los datos entre sesiones y facilitando la recuperación de información en caso de cierre inesperado del dashboard.
 - **Importación de Resultados Exportados**: Implementar una funcionalidad que permita a los usuarios importar resultados exportados anteriormente, facilitando la comparación y el análisis de datos históricos.
+- **Análisis Temporal**: Implementar seguimiento de cambios en el índice de sostenibilidad a lo largo del tiempo.
+- **Agrupación de Dispositivos**: Permitir crear grupos de dispositivos basados en diferentes criterios (tipo, ubicación, función, etc.) y calcular índices de sostenibilidad por grupo, facilitando el análisis comparativo entre diferentes categorías de dispositivos IoT.
+- **Integración con APIs**: Permitir la conexión con APIs de proveedores de energía y servicios IoT para obtener datos en tiempo real sobre consumo energético y otros parámetros relevantes.
+- **Exportación a Formatos Especializados**: Añadir soporte para exportar resultados en formatos específicos para reportes de sostenibilidad corporativos o certificaciones ambientales.
+
+## Nota sobre la Integridad del Modelo
+
+El sistema mantiene todas las métricas de sostenibilidad como un conjunto integral por las siguientes razones:
+
+### Integridad del Modelo
+- El modelo fue diseñado para evaluar la sostenibilidad de manera holística
+- Las métricas están interrelacionadas y se complementan entre sí
+- La exclusión de métricas podría llevar a evaluaciones incompletas o sesgadas
+
+### Validez Científica
+- El modelo AHP+ODS fue desarrollado considerando todas las métricas
+- Los pesos fueron calculados considerando la importancia relativa de cada métrica
+- La matriz de comparación por pares se construyó con todas las métricas en mente
+
+### Propósito del Proyecto
+- El objetivo es proporcionar una evaluación completa de la sostenibilidad
+- Permitir la selección de métricas podría llevar a que los usuarios elijan solo las métricas que les convienen
+- Esto podría resultar en evaluaciones menos rigurosas o sesgadas
+
+### Consistencia en la Evaluación
+- Al mantener todas las métricas, aseguramos que todos los dispositivos sean evaluados con los mismos criterios
+- Esto permite comparaciones más justas y objetivas entre diferentes dispositivos
+
+### Alineación con ODS
+- El modelo está alineado con los Objetivos de Desarrollo Sostenible
+- La exclusión de métricas podría resultar en una evaluación que no refleje adecuadamente el impacto en los ODS
+
