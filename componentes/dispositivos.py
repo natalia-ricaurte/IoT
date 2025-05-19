@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 from componentes.graficos import radar_chart
 from utilidades.constantes import NOMBRES_METRICAS
-from utilidades.auxiliares import to_dict_flat, crear_snapshot_pesos
+from utilidades.auxiliares import crear_snapshot_pesos
 from pesos import obtener_pesos_recomendados, validar_pesos_manuales
 
 def mostrar_dispositivo(dispositivo, idx):
