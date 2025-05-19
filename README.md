@@ -1,182 +1,198 @@
-# Evaluación de Sostenibilidad para Dispositivos IoT
 
-Este proyecto de grado, desarrollado por Juan Camilo Pacheco, Natalia Andrea Ricaurte y Laura Valentina Lara, implementa un sistema interactivo de medición de sostenibilidad ambiental para sistemas IoT, con énfasis en la fase operativa de los dispositivos.
+# Sustainability Evaluation for IoT Devices
 
-A través de un dashboard desarrollado en Python y Streamlit, el sistema permite evaluar el impacto ambiental de cada dispositivo IoT considerando factores como consumo energético, generación de residuos electrónicos, uso de energías renovables, eficiencia operativa y procesamiento de datos (incluyendo edge computing).
+This undergraduate thesis project, developed by Juan Camilo Pacheco, Natalia Andrea Ricaurte, and Laura Valentina Lara, implements an interactive system for assessing the environmental sustainability of IoT systems, with a focus on the operational phase of devices.
 
-El sistema permite asignar pesos personalizados a las métricas de sostenibilidad mediante un enfoque flexible, combinando criterios cualitativos, alineación con los Objetivos de Desarrollo Sostenible (ODS), y la metodología AHP para estructurar los pesos recomendados.
+Through a dashboard built with Python and Streamlit, the system evaluates the environmental impact of each IoT device by considering factors such as energy consumption, electronic waste generation, use of renewable energy, operational efficiency, and data processing (including edge computing).
 
-## Características Principales
+The system allows users to assign custom weights to sustainability metrics using a flexible approach that combines qualitative criteria, alignment with the Sustainable Development Goals (SDGs), and the AHP methodology to structure the recommended weights.
 
-### Evaluación Ambiental
-- Ocho métricas clave:
-  - Consumo de Energía (CE)
-  - Huella de Carbono (HC)
-  - Residuos Electrónicos (EW)
-  - Energía Renovable (ER)
-  - Eficiencia Energética (EE)
-  - Durabilidad del Producto (DP)
-  - Reciclabilidad (RC)
-  - Mantenimiento (IM)
 
-- Normalización y ponderación de pesos:
-  - Ponderación configurable mediante tres métodos:
-    - Pesos recomendados (basados en ODS e impacto ambiental)
-    - Ajuste manual
-    - Calcular nuevos pesos (matriz de comparacion por pares)
+## Table of Contents
 
-### Visualización y Análisis
-- Dashboard interactivo con:
-  - Gráficos radar individuales y globales
-  - Tablas detalladas de resultados
-  - Exportación completa a Excel con trazabilidad de dispositivos incluidos
+- [Key Features](#key-features)
+- [Installation](#installation)
+- [User Guide](#user-guide)
+  - [1. Weight Configuration](#1-weight-configuration)
+  - [2. Device Management](#2-device-management)
+  - [3. Device Selection](#3-device-selection)
+  - [4. Calculation and Results](#4-calculation-and-results)
+- [Data Export](#data-export)
+- [Project Structure](#project-structure)
+- [Contact](#contact)
+- [Opportunities for Improvement](#opportunities-for-improvement)
+- [Model Integrity Note](#model-integrity-note)
 
-### Gestión de Dispositivos
-- Ingreso manual o importación masiva desde Excel, CSV o JSON
-- Validación automática de datos
-- Almacenamiento y recuperación de dispositivos
-- Selección flexible de dispositivos para el cálculo global
+## Key Features
 
-### Configuración Personalizada
-- Guardado y carga de configuraciones de pesos
-- Comparación entre configuraciones
-- Aplicación de configuraciones a dispositivos nuevos o existentes
+### Environmental Assessment
+- Eight key metrics:
+  - Energy Consumption (EC)
+  - Carbon Footprint (CF)
+  - Electronic Waste (EW)
+  - Renewable Energy Use (RE)
+  - Energy Efficiency (EE)
+  - Product Durability (PD)
+  - Recyclability (RC)
+  - Maintenance (MT)
 
-## Instalación
+- Metric normalization and weighting:
+  - Configurable weighting via three methods:
+    - Recommended Weights (based on SDGs and environmental impact)
+    - Manual Adjustment
+    - Calculate New Weights (pairwise comparison matrix)
 
-1. Clonar el repositorio:
+### Visualization and Analysis
+- Interactive dashboard featuring:
+  - Radar charts (individual and global)
+  - Detailed results tables
+  - Full Excel export with traceability of included devices
+
+### Device Management
+- Manual entry or bulk import from Excel, CSV, or JSON
+- Automatic data validation
+- Storage and retrieval of devices
+- Flexible device selection for global index calculation
+
+### Custom Configuration
+- Save and load custom weight configurations
+- Compare between configurations
+- Apply configurations to new or existing devices
+
+## Installation
+
+1. Clone the repository:
 ```bash
 git clone https://github.com/natalia-ricaurte/IoT
 cd IoT
 ```
 
-2. Instalar dependencias:
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Ejecutar la aplicación:
+3. Run the application:
 ```bash
 streamlit run app.py
 ```
 
-## Guía de Uso
+## User Guide
 
-> **Nota:** Para un uso detallado, consulta la guía integrada dentro del dashboard, que incluye explicaciones paso a paso y advertencias clave durante el análisis.
+> **Note:** For detailed instructions, please refer to the in-dashboard guide, which includes step-by-step explanations and key warnings during analysis.
 
-### 1. Configuración de Pesos
-- Elige entre pesos recomendados, ajuste manual o cálculo a través de comparación por pares.
-- Puedes guardar configuraciones personalizadas con nombre.
-- La configuración activa se aplica al momento de añadir un nuevo dispositivo.
+### 1. Weight Configuration
+- Choose between recommended weights, manual adjustment, or pairwise comparison.
+- You can save custom configurations with a descriptive name.
+- The active configuration is applied at the time of adding a new device.
 
-### 2. Gestión de Dispositivos
-- Ingresa datos manualmente o importa desde archivo.
-- Formatos admitidos: .xlsx, .csv, .json
-- Los archivos deben seguir la estructura y nombres exactos de la plantilla.
+### 2. Device Management
+- Manually enter data or import from file.
+- Supported formats: .xlsx, .csv, .json
+- Files must follow the structure and exact column names of the template.
 
-#### Plantilla de Importación
-| Columna                  | Descripción                                                          |
-|--------------------------|----------------------------------------------------------------------|
-| nombre                   | Nombre del dispositivo                                               |
-| potencia_w               | Potencia en vatios (W)                                               |
-| horas_uso_diario         | Horas diarias de operación                                           |
-| dias_uso_anio            | Días de uso por año                                                  |
-| peso_kg                  | Peso total del dispositivo                                           |
-| vida_util_anios          | Años de vida útil estimada                                           |
-| energia_renovable_pct    | Porcentaje de energía limpia utilizada                               |
-| funcionalidad_1_10       | Funcionalidad del dispositivo (escala 1-10)                          |
-| reciclabilidad_pct       | Porcentaje de reciclabilidad                                         |
-| baterias_vida_util       | Número total de baterías usadas durante su vida útil                 |
-| peso_bateria_g           | Peso de cada batería en gramos                                       |
-| mantenimientos           | Cantidad de mantenimientos requeridos                               |
-| componentes_reemplazados | Número de componentes reemplazados                                   |
-| peso_componente_g        | Peso promedio de cada componente reemplazado                         |
-| peso_nuevo_g             | Peso inicial del dispositivo en gramos                              |
-| peso_final_g             | Peso del dispositivo después del uso                                 |
+#### Import Template
+| Column                   | Description                                                     |
+|--------------------------|-----------------------------------------------------------------|
+| nombre                   | Descriptive name of the IoT device                              |
+| potencia_w               | Power consumption in watts (W)                                  |
+| horas_uso_diario         | Hours of daily operation                                        |
+| dias_uso_anio            | Days of operation per year                                      |
+| peso_kg                  | Total device weight in kilograms                                |
+| vida_util_anios          | Expected lifespan in years                                      |
+| energia_renovable_pct    | Percentage of energy from renewable sources                     |
+| funcionalidad_1_10       | Device functionality rating (scale 1–10)                        |
+| reciclabilidad_pct       | Percentage of recyclable materials                             |
+| baterias_vida_util       | Number of batteries required during the device's lifespan       |
+| peso_bateria_g           | Weight of each battery in grams                                 |
+| mantenimientos           | Number of required maintenance operations                       |
+| componentes_reemplazados | Number of components replaced                                   |
+| peso_componente_g        | Average weight of each replaced component in grams              |
+| peso_nuevo_g             | Total weight when new (grams)                                   |
+| peso_final_g             | Final weight after usage (grams)                                |
 
-> Nota: No modifiques los nombres de columna. El sistema valida los datos automáticamente y requiere coincidencia exacta.
+> Note: Do not modify column names. The system automatically validates the data and requires exact matches.
 
-### 3. Selección de Dispositivos
-- Usa los checkboxes "Incluir en cálculo" para seleccionar qué dispositivos se incluirán en el cálculo global.
-- El estado de selección se mantiene y se refleja en todas las exportaciones.
-- Puedes usar los botones "Seleccionar Todos" y "Deseleccionar Todos" para una gestión rápida.
+### 3. Device Selection
+- Use the "Include in calculation" checkboxes to select devices for the global index.
+- Selection state is preserved and reflected in all exports.
+- Use "Select All" and "Deselect All" buttons for quick management.
 
-### 4. Cálculo y Resultados
-- Calcula el índice de sostenibilidad individual o global.
-- Revisa gráficos y métricas detalladas.
-- Exporta resultados en Excel con información completa de trazabilidad.
+### 4. Calculation and Results
+- Compute the sustainability index (individual and global).
+- Review charts and detailed metrics.
+- Export results to Excel with full traceability.
 
-## Exportación de Datos
+## Data Export
 
-### Resultados Completos (.xlsx)
-Incluye:
-- Índice global y número de dispositivos incluidos en el nombre del archivo
-- Hoja de resumen con el índice global y gráficos
-- Hoja de dispositivos con todos los datos y su estado de inclusión en el cálculo
-- Hojas de detalle individuales para cada dispositivo
-- Tabla de pesos aplicados
-- Gráficos y métricas normalizadas
+### Full Results (.xlsx)
+Includes:
+- Global index and device count in the filename
+- Summary sheet with global index and charts
+- Device sheet with input data and inclusion status
+- Individual detail sheets per device
+- Applied weight table
+- Normalized metrics and radar charts
 
-### Lista de Dispositivos
-Formatos disponibles: .xlsx, .csv, .json
-- Opción para incluir solo dispositivos seleccionados para el cálculo global
-- Contiene datos de entrada y estado de selección
-- Compatible con futuras importaciones
-- Nombre del archivo incluye el número de dispositivos y fecha
+### Device List
+Available formats: .xlsx, .csv, .json
+- Option to export only selected devices
+- Includes input data and selection status
+- Compatible with future imports
+- Filename includes device count and date
 
-## Estructura del Proyecto
+## Project Structure
 
 ```
 IoT/
-├── app.py                 # Aplicación principal (Streamlit)
-├── modelo.py              # Cálculo de sostenibilidad
-├── pesos.py               # Métodos de ponderación
-├── componentes/           # Componentes UI (formularios, gráficos, etc.)
-├── servicios/             # Servicios auxiliares (cálculos, exportación)
-├── utilidades/            # Constantes, estado, manejo de datos
-└── requirements.txt       # Dependencias del proyecto
+├── app.py                 # Main application (Streamlit)
+├── model.py               # Sustainability index calculation
+├── weights.py             # Weighting methods
+├── components/            # UI components (forms, charts, etc.)
+├── services/              # Auxiliary services (calculations, export)
+├── utils/                 # Constants, state management, data handling
+└── requirements.txt       # Project dependencies
 ```
 
-## Contacto
+## Contact
 
 - Juan Camilo Pacheco — jc.pacheco@uniandes.edu.co  
 - Natalia Andrea Ricaurte — na.ricaurtep@uniandes.edu.co  
 - Laura Valentina Lara — lv.larad@uniandes.edu.co  
-- Repositorio: https://github.com/natalia-ricaurte/IoT
+- Repository: https://github.com/natalia-ricaurte/IoT
 
-## Oportunidades de Mejora
+## Opportunities for Improvement
 
-- **Gestión de Cuentas**: Implementar un sistema de autenticación y gestión de cuentas que permita a los usuarios guardar su progreso, configuraciones y dispositivos, asegurando la persistencia de los datos entre sesiones y facilitando la recuperación de información en caso de cierre inesperado del dashboard.
-- **Importación de Resultados Exportados**: Implementar una funcionalidad que permita a los usuarios importar resultados exportados anteriormente, facilitando la comparación y el análisis de datos históricos.
-- **Análisis Temporal**: Implementar seguimiento de cambios en el índice de sostenibilidad a lo largo del tiempo.
-- **Agrupación de Dispositivos**: Permitir crear grupos de dispositivos basados en diferentes criterios (tipo, ubicación, función, etc.) y calcular índices de sostenibilidad por grupo, facilitando el análisis comparativo entre diferentes categorías de dispositivos IoT.
-- **Integración con APIs**: Permitir la conexión con APIs de proveedores de energía y servicios IoT para obtener datos en tiempo real sobre consumo energético y otros parámetros relevantes.
-- **Exportación a Formatos Especializados**: Añadir soporte para exportar resultados en formatos específicos para reportes de sostenibilidad corporativos o certificaciones ambientales.
+- **User Accounts:** Add authentication and account management to persist configurations and device data across sessions.
+- **Importing Exported Results:** Allow re-importing exported results to compare and analyze historical data.
+- **Temporal Analysis:** Enable tracking of sustainability index changes over time.
+- **Device Grouping:** Allow users to create groups based on type, location, or function and compute sustainability indexes per group.
+- **API Integration:** Connect to APIs from energy providers and IoT services to retrieve real-time data.
+- **Specialized Export Formats:** Support exporting reports formatted for corporate sustainability reporting or environmental certifications.
 
-## Nota sobre la Integridad del Modelo
+## Model Integrity Note
 
-El sistema mantiene todas las métricas de sostenibilidad como un conjunto integral por las siguientes razones:
+The system maintains all sustainability metrics as an integral set for the following reasons:
 
-### Integridad del Modelo
-- El modelo fue diseñado para evaluar la sostenibilidad de manera holística
-- Las métricas están interrelacionadas y se complementan entre sí
-- La exclusión de métricas podría llevar a evaluaciones incompletas o sesgadas
+### Model Integrity
+- The model is designed for holistic sustainability evaluation.
+- Metrics are interrelated and complementary.
+- Omitting metrics could lead to incomplete or biased assessments.
 
-### Validez Científica
-- El modelo AHP+ODS fue desarrollado considerando todas las métricas
-- Los pesos fueron calculados considerando la importancia relativa de cada métrica
-- La matriz de comparación por pares se construyó con todas las métricas en mente
+### Scientific Validity
+- The AHP+SDG model was developed considering all metrics.
+- Weights were calculated based on each metric’s relative importance.
+- The pairwise comparison matrix was built with all metrics in mind.
 
-### Propósito del Proyecto
-- El objetivo es proporcionar una evaluación completa de la sostenibilidad
-- Permitir la selección de métricas podría llevar a que los usuarios elijan solo las métricas que les convienen
-- Esto podría resultar en evaluaciones menos rigurosas o sesgadas
+### Project Purpose
+- The goal is to provide a complete sustainability evaluation.
+- Allowing metric exclusion could encourage cherry-picking.
+- This may result in less rigorous or biased assessments.
 
-### Consistencia en la Evaluación
-- Al mantener todas las métricas, aseguramos que todos los dispositivos sean evaluados con los mismos criterios
-- Esto permite comparaciones más justas y objetivas entre diferentes dispositivos
+### Evaluation Consistency
+- Keeping all metrics ensures consistent evaluation across devices.
+- This enables fair and objective comparison.
 
-### Alineación con ODS
-- El modelo está alineado con los Objetivos de Desarrollo Sostenible
-- La exclusión de métricas podría resultar en una evaluación que no refleje adecuadamente el impacto en los ODS
-
+### SDG Alignment
+- The model aligns with the Sustainable Development Goals.
+- Omitting metrics may prevent the evaluation from fully reflecting SDG impacts.
