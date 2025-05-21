@@ -74,19 +74,38 @@ def mostrar_dispositivo(dispositivo, idx):
             st.dataframe(df_datos, use_container_width=True)
 
         with st.expander("Pesos utilizados"):
-            pesos = dispositivo.get('pesos_utilizados', {})
+            # Obtener los pesos del snapshot si está disponible
+            snapshot_pesos = dispositivo.get('snapshot_pesos', {})
+            pesos = snapshot_pesos.get('pesos_manuales', {})
+            
+            # Si no hay pesos en el snapshot, intentar obtenerlos de pesos_utilizados
+            if not pesos:
+                pesos = dispositivo.get('pesos_utilizados', {})
+                if not isinstance(pesos, dict):
+                    try:
+                        if isinstance(pesos, str):
+                            import json
+                            pesos = json.loads(pesos)
+                        elif isinstance(pesos, (list, tuple)):
+                            pesos = dict(pesos)
+                        else:
+                            pesos = {}
+                    except Exception:
+                        pesos = {}
+            
             # Limpiar y asegurar que todos los valores sean floats
             pesos_limpios = {}
             for k, v in pesos.items():
-                if isinstance(v, dict):
-                    v = list(v.values())[0]
                 try:
+                    if isinstance(v, dict):
+                        v = list(v.values())[0]
                     pesos_limpios[k] = float(v)
                 except Exception:
                     continue
+            
             if pesos_limpios:
                 # Mostrar el nombre de la configuración guardado explícitamente
-                nombre_config = dispositivo.get('snapshot_pesos', {}).get('nombre_configuracion', 'Desconocido')
+                nombre_config = snapshot_pesos.get('nombre_configuracion', 'Desconocido')
                 st.markdown(f"**Configuración de pesos:** {nombre_config}")
                 df_pesos = pd.DataFrame.from_dict(pesos_limpios, orient='index', columns=['Peso'])
                 df_pesos.index = df_pesos.index.map(NOMBRES_METRICAS)

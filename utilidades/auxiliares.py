@@ -52,37 +52,55 @@ def crear_snapshot_pesos(pesos_usuario, modo_pesos):
     Returns:
         dict: El snapshot de pesos con el formato consistente
     """
+    # Asegurar que pesos_usuario sea un diccionario válido
+    if not isinstance(pesos_usuario, dict):
+        try:
+            pesos_usuario = to_dict_flat(pesos_usuario)
+        except Exception:
+            pesos_usuario = {}
+    
+    # Limpiar y normalizar los pesos
+    pesos_limpios = {}
+    for k, v in pesos_usuario.items():
+        try:
+            if isinstance(v, dict):
+                v = list(v.values())[0]
+            pesos_limpios[k] = float(v)
+        except (ValueError, TypeError):
+            continue
+    
     nombre_config = "Pesos Recomendados"
     
     if modo_pesos == "Calcular nuevos pesos":
         if 'pesos_ahp' in st.session_state:
             for nombre_config_ahp, config in st.session_state.configuraciones_ahp.items():
-                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_usuario):
+                if to_dict_flat(config['pesos']) == to_dict_flat(pesos_limpios):
                     nombre_config = f"Configuración Calculada: {nombre_config_ahp}"
                     break
             if nombre_config == "Pesos Recomendados":
                 nombre_config = "Pesos Calculados"
     elif modo_pesos == "Ajuste Manual":
-        pesos_limpios = {k: float(list(v.values())[0]) if isinstance(v, dict) else float(v) 
-                        for k, v in pesos_usuario.items()}
         pesos_recomendados = obtener_pesos_recomendados()
         if to_dict_flat(pesos_limpios) == to_dict_flat(pesos_recomendados):
             nombre_config = "Pesos Recomendados"
         else:
             nombre_config = "Pesos Manuales Personalizados"
             for nombre_config_manual, config in st.session_state.pesos_guardados.items():
-                # Normalizar los pesos de la configuración guardada para comparar
-                config_normalizada = {k: float(v) for k, v in config.items()}
-                suma = sum(config_normalizada.values())
-                if suma != 1.0:
-                    config_normalizada = {k: v/suma for k, v in config_normalizada.items()}
-                if to_dict_flat(config_normalizada) == to_dict_flat(pesos_limpios):
-                    nombre_config = f"Configuración Manual: {nombre_config_manual}"
-                    break
+                try:
+                    # Normalizar los pesos de la configuración guardada para comparar
+                    config_normalizada = {k: float(v) for k, v in config.items()}
+                    suma = sum(config_normalizada.values())
+                    if suma != 1.0:
+                        config_normalizada = {k: v/suma for k, v in config_normalizada.items()}
+                    if to_dict_flat(config_normalizada) == to_dict_flat(pesos_limpios):
+                        nombre_config = f"Configuración Manual: {nombre_config_manual}"
+                        break
+                except Exception:
+                    continue
     
     return {
         "modo": modo_pesos,
         "nombre_configuracion": nombre_config,
-        "pesos_manuales": pesos_usuario,  # Guardar los pesos normalizados
+        "pesos_manuales": pesos_limpios,  # Guardar los pesos normalizados
         "pesos_ahp": st.session_state.get("pesos_ahp", {})
     } 
