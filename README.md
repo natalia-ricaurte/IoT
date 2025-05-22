@@ -148,9 +148,9 @@ IoT/
 ├── app.py                 # Main application (Streamlit)
 ├── model.py               # Sustainability index calculation
 ├── weights.py             # Weighting methods
-├── components/            # UI components (forms, charts, etc.)
-├── services/              # Auxiliary services (calculations, export)
-├── utils/                 # Constants, state management, data handling
+├── components/            # UI components (forms, charts, weights_ui)
+├── services/              # Auxiliary services (import_service, export, ahp_service)
+├── utils/                 # Constants, state management, helpers
 └── requirements.txt       # Project dependencies
 ```
 
@@ -169,6 +169,8 @@ IoT/
 - **Device Grouping:** Allow users to create groups based on type, location, or function and compute sustainability indexes per group.
 - **API Integration:** Connect to APIs from energy providers and IoT services to retrieve real-time data.
 - **Specialized Export Formats:** Support exporting reports formatted for corporate sustainability reporting or environmental certifications.
+- **Import format validation** validate column names and data types
+- **Device management** allow user to edit device data
 
 ## Model Integrity Note
 
