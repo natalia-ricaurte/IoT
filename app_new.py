@@ -222,9 +222,9 @@ with import_container:
         for idx, device in enumerate(st.session_state['imported_devices']):
             with st.container():
                 col1, col2, col3 = st.columns([5, 1, 1])
-                name = device.get('nombre', 'Sin nombre')
-                power = device.get('potencia', 'N/A')
-                life = device.get('vida', 'N/A')
+                name = device.get('name', 'Sin nombre')
+                power = device.get('power', 'N/A')
+                life = device.get('life', 'N/A')
                 col1.markdown(f"**{name}** | Potencia: {power} W | Vida útil: {life} años")
                 key_exp = f"expand_imported_{idx}"
                 if key_exp not in st.session_state:
@@ -248,7 +248,7 @@ with import_container:
                             user_weights = current_ahp_weights
                             weights_config_name = "Pesos Calculados"
                             for ahp_config_name, config in st.session_state.ahp_configurations.items():
-                                if to_dict_flat(config['weights']) == to_dict_flat(current_ahp_weights):
+                                if to_dict_flat(config['weights']) == to_dict_flat(user_weights):
                                     weights_config_name = f"Configuración Calculada: {ahp_config_name}"
                                     break
                         else:
@@ -269,22 +269,22 @@ with import_container:
                     else:  # Pesos Recomendados
                         user_weights = get_recommended_weights()
                         weights_config_name = "Pesos Recomendados"                    
-                    sensor = IoTSustainability(device.get('nombre', 'Sin nombre'))
+                    sensor = IoTSustainability(name)
                     sensor.weights = {k: float(extract_weight_value(v)) for k, v in user_weights.items()}
                     sensor.calculate_energy_consumption(
-                        float(device.get('potencia', 0)),
-                        float(device.get('horas', 0)),
-                        float(device.get('dias', 0))
+                        float(device.get('power', 0)),
+                        float(device.get('hours', 0)),
+                        float(device.get('days', 0))
                     )
                     sensor.calculate_carbon_footprint()
                     sensor.calculate_ewaste(
-                        float(device.get('peso', 0)),
-                        float(device.get('vida', 0))
+                        float(device.get('weight', 0)),
+                        float(device.get('life', 0))
                     )
-                    sensor.calculate_renewable_energy(float(device.get('energia_renovable', 0)))
-                    sensor.calculate_energy_efficiency(float(device.get('funcionalidad', 0)))
-                    sensor.calculate_durability(float(device.get('vida', 0)))
-                    sensor.calculate_recyclability(float(device.get('reciclabilidad', 0)))
+                    sensor.calculate_renewable_energy(float(device.get('renewable_energy', 0)))
+                    sensor.calculate_energy_efficiency(float(device.get('functionality', 0)))
+                    sensor.calculate_durability(float(device.get('life', 0)))
+                    sensor.calculate_recyclability(float(device.get('recyclability', 0)))
                     sensor.calculate_maintenance_index(
                         int(device.get('B', 0)),
                         float(device.get('Wb', 0)),
@@ -322,7 +322,7 @@ with import_container:
                     if current_weight_mode == "Ajuste Manual":
                         for k, v in individual_manual_weights.items():
                             st.session_state[f"manual_weight_{k}"] = v
-                    st.success(f"Dispositivo '{device.get('nombre', 'Sin nombre')}' añadido correctamente al sistema.")
+                    st.success(f"Dispositivo '{name}' añadido correctamente al sistema.")
                     st.rerun()
                 if st.session_state[key_exp]:
                     st.write(device)
@@ -341,7 +341,7 @@ with import_container:
                         individual_manual_weights[k] = st.session_state.get(f"manual_weight_{k}")
                 new_devices = []
                 for device in st.session_state['imported_devices']:
-                    name = device.get('nombre', 'Sin nombre')
+                    name = device.get('name', 'Sin nombre')
                     # Get active weights
                     if current_weight_mode == "Calcular nuevos pesos":
                         if current_ahp_weights:
@@ -374,19 +374,19 @@ with import_container:
                     sensor = IoTSustainability(name)
                     sensor.weights = {k: float(extract_weight_value(v)) for k, v in user_weights.items()}
                     sensor.calculate_energy_consumption(
-                        float(device.get('potencia', 0)),
-                        float(device.get('horas', 0)),
-                        float(device.get('dias', 0))
+                        float(device.get('power', 0)),
+                        float(device.get('hours', 0)),
+                        float(device.get('days', 0))
                     )
                     sensor.calculate_carbon_footprint()
                     sensor.calculate_ewaste(
-                        float(device.get('peso', 0)),
-                        float(device.get('vida', 0))
+                        float(device.get('weight', 0)),
+                        float(device.get('life', 0))
                     )
-                    sensor.calculate_renewable_energy(float(device.get('energia_renovable', 0)))
-                    sensor.calculate_energy_efficiency(float(device.get('funcionalidad', 0)))
-                    sensor.calculate_durability(float(device.get('vida', 0)))
-                    sensor.calculate_recyclability(float(device.get('reciclabilidad', 0)))
+                    sensor.calculate_renewable_energy(float(device.get('renewable_energy', 0)))
+                    sensor.calculate_energy_efficiency(float(device.get('functionality', 0)))
+                    sensor.calculate_durability(float(device.get('life', 0)))
+                    sensor.calculate_recyclability(float(device.get('recyclability', 0)))
                     sensor.calculate_maintenance_index(
                         int(device.get('B', 0)),
                         float(device.get('Wb', 0)),
@@ -447,17 +447,17 @@ with col1:
         st.subheader("Datos del dispositivo IoT")
         colA, colB = st.columns(2)
         with colA:
-            nombre = st.text_input("Nombre del dispositivo", value=st.session_state["form_nombre"], help="Nombre descriptivo del dispositivo IoT.")
-            potencia = st.number_input("Potencia (W)", value=st.session_state["form_potencia"], help="Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento.")
-            horas = st.number_input("Horas uso diario", value=st.session_state["form_horas"], help="Cantidad de horas al día que el dispositivo está en uso.")
-            dias = st.number_input("Días uso/año", value=st.session_state["form_dias"], help="Número de días al año que el dispositivo opera.")
-            peso = st.number_input("Peso dispositivo (kg)", value=st.session_state["form_peso"], help="Peso total del dispositivo en kilogramos.")
-            vida = st.number_input("Vida útil (años)", value=st.session_state["form_vida"], help="Duración esperada del dispositivo antes de desecharse o reemplazarse.")
+            name = st.text_input("Nombre del dispositivo", value=st.session_state["form_name"], help="Nombre descriptivo del dispositivo IoT.")
+            power = st.number_input("Potencia (W)", value=st.session_state["form_power"], help="Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento.")
+            hours = st.number_input("Horas uso diario", value=st.session_state["form_hours"], help="Cantidad de horas al día que el dispositivo está en uso.")
+            days = st.number_input("Días uso/año", value=st.session_state["form_days"], help="Número de días al año que el dispositivo opera.")
+            weight = st.number_input("Peso dispositivo (kg)", value=st.session_state["form_weight"], help="Peso total del dispositivo en kilogramos.")
+            life = st.number_input("Vida útil (años)", value=st.session_state["form_life"], help="Duración esperada del dispositivo antes de desecharse o reemplazarse.")
 
         with colB:
-            energia_renovable = st.slider("Energía renovable (%)", 0, 100, st.session_state["form_energia_renovable"], help="Porcentaje de energía que proviene de fuentes renovables.")
-            funcionalidad = st.slider("Funcionalidad (1-10)", 1, 10, st.session_state["form_funcionalidad"], help="Nivel de funcionalidad y utilidad que ofrece el dispositivo.")
-            reciclabilidad = st.slider("Reciclabilidad (%)", 0, 100, st.session_state["form_reciclabilidad"], help="Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil.")
+            renewable_energy = st.slider("Energía renovable (%)", 0, 100, st.session_state["form_renewable_energy"], help="Porcentaje de energía que proviene de fuentes renovables.")
+            functionality = st.slider("Funcionalidad (1-10)", 1, 10, st.session_state["form_functionality"], help="Nivel de funcionalidad y utilidad que ofrece el dispositivo.")
+            recyclability = st.slider("Reciclabilidad (%)", 0, 100, st.session_state["form_recyclability"], help="Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil.")
 
         with st.expander("Datos de mantenimiento"):
             colM1, colM2 = st.columns(2)
@@ -475,7 +475,7 @@ with col1:
         submitted = st.form_submit_button("Añadir dispositivo")
 
 with col2:
-    pesos_usuario = show_weights_interface()
+    user_weights = show_weights_interface()
 
 if submitted:
     # Eliminate only global results and date, NOT AHP weights
@@ -486,67 +486,67 @@ if submitted:
     # Determine active weights and configuration name at this moment
     if st.session_state.weight_mode_radio == "Calcular nuevos pesos":
         if 'ahp_weights' in st.session_state:
-            pesos_usuario = st.session_state.ahp_weights
+            user_weights = st.session_state.ahp_weights
             # Search for active calculated configuration name
-            nombre_config_pesos = "Pesos Calculados"
-            for nombre_config_ahp, config in st.session_state.ahp_configurations.items():
-                if to_dict_flat(config['weights']) == to_dict_flat(pesos_usuario):
-                    nombre_config_pesos = f"Configuración Calculada: {nombre_config_ahp}"
+            weights_config_name = "Pesos Calculados"
+            for ahp_config_name, config in st.session_state.ahp_configurations.items():
+                if to_dict_flat(config['weights']) == to_dict_flat(user_weights):
+                    weights_config_name = f"Configuración Calculada: {ahp_config_name}"
                     break
         else:
             st.warning("No hay pesos AHP calculados. Se usarán los pesos recomendados.")
-            pesos_usuario = get_recommended_weights()
-            nombre_config_pesos = "Pesos Recomendados"
+            user_weights = get_recommended_weights()
+            weights_config_name = "Pesos Recomendados"
     elif st.session_state.weight_mode_radio == "Ajuste Manual":
-        pesos_manuales = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
-        pesos_usuario, _ = validate_manual_weights(pesos_manuales)
+        manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
+        user_weights, _ = validate_manual_weights(manual_weights)
         # Search for active manual configuration name
-        nombre_config_pesos = "Pesos Manuales Personalizados"
-        for nombre_config_manual, config in st.session_state.saved_weights.items():
+        weights_config_name = "Pesos Manuales Personalizados"
+        for manual_config_name, config in st.session_state.saved_weights.items():
             # Normalize saved configuration before comparing
-            config_normalizada = {k: float(v) for k, v in config.items()}
-            suma = sum(config_normalizada.values())
-            if suma != 1.0:
-                config_normalizada = {k: v/suma for k, v in config_normalizada.items()}
-            if to_dict_flat(config_normalizada) == to_dict_flat(pesos_usuario):
-                nombre_config_pesos = f"Configuración Manual: {nombre_config_manual}"
+            normalized_config = {k: float(v) for k, v in config.items()}
+            total = sum(normalized_config.values())
+            if total != 1.0:
+                normalized_config = {k: v/total for k, v in normalized_config.items()}
+            if to_dict_flat(normalized_config) == to_dict_flat(user_weights):
+                weights_config_name = f"Configuración Manual: {manual_config_name}"
                 break
     else:
-        pesos_usuario = get_recommended_weights()
-        nombre_config_pesos = "Pesos Recomendados"
+        user_weights = get_recommended_weights()
+        weights_config_name = "Pesos Recomendados"
 
     # Calculate sustainability index using these weights
-    sensor = IoTSustainability(nombre)
-    pesos_limpios = {}
-    for k, v in pesos_usuario.items():
+    sensor = IoTSustainability(name)
+    clean_weights = {}
+    for k, v in user_weights.items():
         if isinstance(v, dict):
             v = list(v.values())[0]
         try:
-            pesos_limpios[k] = float(v)
+            clean_weights[k] = float(v)
         except Exception:
             continue
-    sensor.weights = pesos_limpios
-    sensor.calculate_energy_consumption(potencia, horas, dias)
+    sensor.weights = clean_weights
+    sensor.calculate_energy_consumption(power, hours, days)
     sensor.calculate_carbon_footprint()
-    sensor.calculate_ewaste(peso, vida)
-    sensor.calculate_renewable_energy(energia_renovable)
-    sensor.calculate_energy_efficiency(funcionalidad)
-    sensor.calculate_durability(vida)
-    sensor.calculate_recyclability(reciclabilidad)
+    sensor.calculate_ewaste(weight, life)
+    sensor.calculate_renewable_energy(renewable_energy)
+    sensor.calculate_energy_efficiency(functionality)
+    sensor.calculate_durability(life)
+    sensor.calculate_recyclability(recyclability)
     sensor.calculate_maintenance_index(B, Wb, M, C, Wc, W0, W)
-    resultado = sensor.calculate_sustainability()
+    result = sensor.calculate_sustainability()
 
     dispositivo_data = {
         "id": str(uuid.uuid4()),
-        "nombre": nombre,
-        "potencia": potencia,
-        "horas": horas,
-        "dias": dias,
-        "peso": peso,
-        "vida": vida,
-        "energia_renovable": energia_renovable,
-        "funcionalidad": funcionalidad,
-        "reciclabilidad": reciclabilidad,
+        "name": name,
+        "power": power,
+        "hours": hours,
+        "days": days,
+        "weight": weight,
+        "life": life,
+        "renewable_energy": renewable_energy,
+        "functionality": functionality,
+        "recyclability": recyclability,
         "B": B,
         "Wb": Wb,
         "M": M,
@@ -555,17 +555,17 @@ if submitted:
         "W0": W0,
         "W": W,
         "calculation_done": True,
-        "used_weights": pesos_usuario,
-        "result": resultado,
+        "used_weights": user_weights,
+        "result": result,
         # Save snapshot of form and weights
         "snapshot_form": {k: st.session_state[f"form_{k}"] for k in FORM_KEYS},
-        "snapshot_weights": create_weights_snapshot(pesos_usuario, st.session_state.weight_mode_radio)
+        "snapshot_weights": create_weights_snapshot(user_weights, st.session_state.weight_mode_radio)
     }
 
     st.session_state.devices.append(dispositivo_data)
     update_device_selection()  # Update selection when adding device
 
-    st.success(f"Dispositivo '{nombre}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
+    st.success(f"Dispositivo '{name}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
     st.rerun()
 
 # --- SHOW INDIVIDUAL RESULTS ---
@@ -588,27 +588,27 @@ if st.session_state.devices:
             }
             st.rerun()
     with col_sel3:
-        num_seleccionados = sum(st.session_state.selected_devices.values())
-        st.markdown(f"**Dispositivos seleccionados para el cálculo global:** {num_seleccionados}/{len(st.session_state.devices)}")
+        num_selected = sum(st.session_state.selected_devices.values())
+        st.markdown(f"**Dispositivos seleccionados para el cálculo global:** {num_selected}/{len(st.session_state.devices)}")
 
     # Show individual results for all devices
     for idx, device in enumerate(st.session_state.devices):
         # If no result exists, recalculate using saved weights
         if "result" not in device or not device["calculation_done"]:
-            sensor = IoTSustainability(device["nombre"])
+            sensor = IoTSustainability(device["name"])
             sensor.weights = {k: float(extract_weight_value(v)) for k, v in device["used_weights"].items()}
-            sensor.calculate_energy_consumption(device["potencia"], device["horas"], device["dias"])
+            sensor.calculate_energy_consumption(device["power"], device["hours"], device["days"])
             sensor.calculate_carbon_footprint()
-            sensor.calculate_ewaste(device["peso"], device["vida"])
-            sensor.calculate_renewable_energy(device["energia_renovable"])
-            sensor.calculate_energy_efficiency(device["funcionalidad"])
-            sensor.calculate_durability(device["vida"])
-            sensor.calculate_recyclability(device["reciclabilidad"])
+            sensor.calculate_ewaste(device["weight"], device["life"])
+            sensor.calculate_renewable_energy(device["renewable_energy"])
+            sensor.calculate_energy_efficiency(device["functionality"])
+            sensor.calculate_durability(device["life"])
+            sensor.calculate_recyclability(device["recyclability"])
             sensor.calculate_maintenance_index(
                 device["B"], device["Wb"], device["M"], device["C"], device["Wc"], device["W0"], device["W"]
             )
-            resultado = sensor.calculate_sustainability()
-            device["result"] = resultado
+            result = sensor.calculate_sustainability()
+            device["result"] = result
             device["calculation_done"] = True
         
         # Show summary and control buttons
@@ -634,7 +634,7 @@ if st.session_state.devices:
                     st.rerun()
             
             # Device summary
-            col_res.markdown(f"**{device['nombre']}** — Índice: {device['result']['sustainability_index']:.2f}/10")
+            col_res.markdown(f"**{device['name']}** — Índice: {device['result']['sustainability_index']:.2f}/10")
             
             # Details button
             key_exp = f"expand_device_{device['id']}"
@@ -651,8 +651,8 @@ if st.session_state.devices:
     st.markdown("---")
     st.markdown("&nbsp;", unsafe_allow_html=True)
 
-    # Standard Streamlit button aligned to the left, with emoji
-    if 'modo_edicion' in st.session_state and st.session_state.modo_edicion:
+    # Global calculation button
+    if 'edit_mode' in st.session_state and st.session_state.edit_mode:
         st.warning("Termina de editar o cancelar la edición de un dispositivo antes de calcular el índice global.")
         st.button("🌍 Calcular Índice Global de Sostenibilidad", disabled=True)
     else:
@@ -666,15 +666,15 @@ if st.session_state.devices:
 
                 for device in selected_devices:
                     if "result" not in device or not device["calculation_done"]:
-                        sensor = IoTSustainability(device["nombre"])
+                        sensor = IoTSustainability(device["name"])
                         sensor.weights = {k: float(extract_weight_value(v)) for k, v in device["used_weights"].items()}
-                        sensor.calculate_energy_consumption(device["potencia"], device["horas"], device["dias"])
+                        sensor.calculate_energy_consumption(device["power"], device["hours"], device["days"])
                         sensor.calculate_carbon_footprint()
-                        sensor.calculate_ewaste(device["peso"], device["vida"])
-                        sensor.calculate_renewable_energy(device["energia_renovable"])
-                        sensor.calculate_energy_efficiency(device["funcionalidad"])
-                        sensor.calculate_durability(device["vida"])
-                        sensor.calculate_recyclability(device["reciclabilidad"])
+                        sensor.calculate_ewaste(device["weight"], device["life"])
+                        sensor.calculate_renewable_energy(device["renewable_energy"])
+                        sensor.calculate_energy_efficiency(device["functionality"])
+                        sensor.calculate_durability(device["life"])
+                        sensor.calculate_recyclability(device["recyclability"])
                         sensor.calculate_maintenance_index(
                             device["B"], device["Wb"], device["M"], 
                             device["C"], device["Wc"], device["W0"], device["W"]
@@ -720,35 +720,35 @@ if st.session_state.get('global_result'):
 if st.session_state.get('devices'):
     st.markdown('---')
     with st.expander('⬇️ Descargar lista de dispositivos añadidos'):
-        solo_seleccionados = st.checkbox("Incluir solo dispositivos seleccionados para el cálculo global")
-        formato = st.selectbox('Selecciona el formato de descarga:', ['Excel (.xlsx)', 'CSV (.csv)', 'JSON (.json)'], key='formato_descarga_devices')
-        formatos_map = {
+        only_selected = st.checkbox("Incluir solo dispositivos seleccionados para el cálculo global")
+        format = st.selectbox('Selecciona el formato de descarga:', ['Excel (.xlsx)', 'CSV (.csv)', 'JSON (.json)'], key='formato_descarga_devices')
+        formats_map = {
             'Excel (.xlsx)': 'excel',
             'CSV (.csv)': 'csv',
             'JSON (.json)': 'json'
         }
-        formato_export = formatos_map[formato]
-        devices_exportar = get_selected_devices() if solo_seleccionados else st.session_state.devices
-        buffer = export_devices_list(devices_exportar, formato=formato_export)
-        if formato_export == 'excel':
+        export_format = formats_map[format]
+        devices_export = get_selected_devices() if only_selected else st.session_state.devices
+        buffer = export_devices_list(devices_export, format=export_format)
+        if export_format == 'excel':
             st.download_button(
                 label='Descargar lista de dispositivos añadidos (Excel)',
                 data=buffer,
-                file_name=f'devices_{len(devices_exportar)}_{datetime.now().strftime("%Y%m%d")}.xlsx',
+                file_name=f'devices_{len(devices_export)}_{datetime.now().strftime("%Y%m%d")}.xlsx',
                 mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
-        elif formato_export == 'csv':
+        elif export_format == 'csv':
             st.download_button(
                 label='Descargar lista de dispositivos añadidos (CSV)',
                 data=buffer,
-                file_name=f'devices_{len(devices_exportar)}_{datetime.now().strftime("%Y%m%d")}.csv',
+                file_name=f'devices_{len(devices_export)}_{datetime.now().strftime("%Y%m%d")}.csv',
                 mime='text/csv'
             )
-        elif formato_export == 'json':
+        elif export_format == 'json':
             st.download_button(
                 label='Descargar lista de dispositivos añadidos (JSON)',
                 data=buffer,
-                file_name=f'devices_{len(devices_exportar)}_{datetime.now().strftime("%Y%m%d")}.json',
+                file_name=f'devices_{len(devices_export)}_{datetime.now().strftime("%Y%m%d")}.json',
                 mime='application/json'
             )
 
