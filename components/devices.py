@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from components.charts import radar_chart
-from utils.constants import METRIC_NAMES
+from utils.constants import METRIC_NAMES, METRIC_NAMES_ES
 from utils.helpers import create_weights_snapshot
 from weights import get_recommended_weights, validate_manual_weights
 
@@ -108,7 +108,7 @@ def show_device(device, idx):
                 config_name = weights_snapshot.get('config_name', 'Desconocido')
                 st.markdown(f"**Configuración de pesos:** {config_name}")
                 df_weights = pd.DataFrame.from_dict(clean_weights, orient='index', columns=['Peso'])
-                df_weights.index = df_weights.index.map(METRIC_NAMES)
+                df_weights.index = df_weights.index.map(METRIC_NAMES_ES)
                 df_weights = df_weights.rename_axis('Métrica').reset_index()
                 st.dataframe(df_weights.style.format({'Peso': '{:.3f}'}), use_container_width=True)
             else:
@@ -208,7 +208,7 @@ def show_global_results():
             except Exception:
                 continue
         df_weights = pd.DataFrame.from_dict(clean_weights, orient='index', columns=['Peso'])
-        df_weights.index = df_weights.index.map(METRIC_NAMES)
+        df_weights.index = df_weights.index.map(METRIC_NAMES_ES)
         df_weights = df_weights.rename_axis('Métrica').reset_index()
         st.dataframe(df_weights.style.format({'Peso': '{:.3f}'}), use_container_width=True)
         

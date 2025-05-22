@@ -124,7 +124,7 @@ class ExcelExporter:
         ws_devices['A1'].font = Font(bold=True, size=14)
 
         internal_columns = [
-            "nombre", "potencia", "horas", "dias", "peso", "vida", "energia_renovable", "funcionalidad", "reciclabilidad",
+            "name", "power", "hours", "days", "weight", "life", "renewable_energy", "functionality", "recyclability",
             "B", "Wb", "M", "C", "Wc", "W0", "W"
         ]
         headers = [
@@ -214,7 +214,10 @@ class ExcelExporter:
         config_name = self._get_device_configuration_name(device)
         ws_detail[f'D{row_after_table+2}'] = f"Configuración de pesos utilizada: {config_name}"
         ws_detail[f'D{row_after_table+2}'].font = Font(bold=True)
-                
+
+        #Weights table
+        self._create_weights_table(ws_detail, row_after_table+2, device.get('used_weights', {}))
+
         # Normalized metrics and chart
         ws_detail[f'G5'] = "Métricas Normalizadas"
         ws_detail[f'G5'].font = Font(bold=True)
@@ -245,7 +248,7 @@ class ExcelExporter:
         snapshot = device.get('weights_snapshot', {})
         if 'config_name' in snapshot and snapshot['config_name']:
             return snapshot['config_name']
-        used_weights = device.get('weights_used', {})
+        used_weights = device.get('used_weights', {})
         weight_mode = snapshot.get('mode', None)  # Try to get mode from snapshot, fallback to None
     
         try:
