@@ -9,14 +9,14 @@ def radar_chart(metrics, title, key):
         key (str): Unique key for the Streamlit component
     """
     labels = {
-        'CE': 'Cons. Energía', 
-        'HC': 'Huella CO₂', 
+        'EC': 'Cons. Energía', 
+        'CF': 'Huella CO₂', 
         'EW': 'E-waste',
-        'ER': 'Energía Renov.', 
+        'RE': 'Energía Renov.', 
         'EE': 'Eficiencia', 
         'PD': 'Durabilidad',
         'RC': 'Reciclabilidad', 
-        'IM': 'Mantenimiento'
+        'MT': 'Mantenimiento'
     }
     
     label_values = [labels[m] for m in metrics.keys()]

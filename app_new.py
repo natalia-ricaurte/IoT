@@ -302,7 +302,7 @@ with import_container:
                         "used_weights": user_weights,
                         "result": result,
                         "snapshot_form": device.copy(),
-                        "snapshot_weights": create_weights_snapshot(user_weights, current_weight_mode)
+                        "weights_snapshot": create_weights_snapshot(user_weights, current_weight_mode)
                     })
                     st.session_state.devices.append(device_data)
                     update_device_selection()  # Update selection when adding device
@@ -404,7 +404,7 @@ with import_container:
                         "used_weights": user_weights,
                         "result": result,
                         "snapshot_form": device.copy(),
-                        "snapshot_weights": create_weights_snapshot(user_weights, current_weight_mode)
+                        "weights_snapshot": create_weights_snapshot(user_weights, current_weight_mode)
                     })
                     new_devices.append(device_data)
                 st.session_state.devices.extend(new_devices)
@@ -559,7 +559,7 @@ if submitted:
         "result": result,
         # Save snapshot of form and weights
         "snapshot_form": {k: st.session_state[f"form_{k}"] for k in FORM_KEYS},
-        "snapshot_weights": create_weights_snapshot(user_weights, st.session_state.weight_mode_radio)
+        "weights_snapshot": create_weights_snapshot(user_weights, st.session_state.weight_mode_radio)
     }
 
     st.session_state.devices.append(dispositivo_data)
@@ -576,7 +576,7 @@ if st.session_state.devices:
     # Mass selection controls
     col_sel1, col_sel2, col_sel3 = st.columns([1, 1, 2])
     with col_sel1:
-        if st.button("Select All"):
+        if st.button("Seleccionar Todos"):
             st.session_state.selected_devices = {
                 d['id']: True for d in st.session_state.devices
             }

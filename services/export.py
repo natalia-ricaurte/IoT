@@ -75,7 +75,7 @@ class ExcelExporter:
         
         return start_row + 2 + len(METRIC_NAMES)
 
-    def _create_radar_chart(self, ws, start_row, data, title, position, value_col=8, category_col=7):
+    def _create_radar_chart(self, ws, start_row, data, title, position, value_col=2, category_col=1):
         """Creates a radar chart in the specified worksheet."""
         chart = RadarChart()
         chart.type = "standard"
@@ -112,12 +112,9 @@ class ExcelExporter:
         self._create_radar_chart(
             self.ws_summary, 
             metrics_row,  # Start row for normalized metrics
-            values, 
-            metrics, 
+            values,
             "Promedio de Métricas Normalizadas",
-            f"D{current_row+1}",
-            value_col=2,      # Column B for values
-            category_col=1    # Column A for categories
+            f"D{current_row+1}"
         )
 
     def _create_devices_sheet(self):
@@ -195,7 +192,7 @@ class ExcelExporter:
         ws_detail['A3'] = "Datos de Entrada"
         ws_detail['A3'].font = Font(bold=True)
         internal_columns = [
-            "nombre", "potencia", "horas", "dias", "peso", "vida", "energia_renovable", "funcionalidad", "reciclabilidad",
+            "name", "power", "hours", "days", "weight", "life", "renewable_energy", "functionality", "recyclability",
             "B", "Wb", "M", "C", "Wc", "W0", "W"
         ]
         headers = [
@@ -233,7 +230,6 @@ class ExcelExporter:
             ws_detail,
             metrics_row,
             values,
-            metrics,
             f"Métricas Normalizadas - {device['name']}",
             "J5",
             value_col=8,      # Column H for values
@@ -247,9 +243,8 @@ class ExcelExporter:
         Otherwise, it attempts to reconstruct the name from the weight values.
         """
         snapshot = device.get('weights_snapshot', {})
-        if 'config_name' in snapshot:
+        if 'config_name' in snapshot and snapshot['config_name']:
             return snapshot['config_name']
-        
         used_weights = device.get('weights_used', {})
         weight_mode = snapshot.get('mode', None)  # Try to get mode from snapshot, fallback to None
     

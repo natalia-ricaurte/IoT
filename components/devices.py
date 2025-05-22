@@ -49,15 +49,15 @@ def show_device(device, idx):
         st.markdown("#### Detalles completos del dispositivo")
         with st.expander("Datos de entrada del dispositivo"):
             field_names = {
-                'nombre': 'Nombre del dispositivo',
-                'potencia': 'Potencia (W)',
-                'horas': 'Horas de uso diario',
-                'dias': 'Días de uso al año',
-                'peso': 'Peso del dispositivo (kg)',
-                'vida': 'Vida útil (años)',
-                'energia_renovable': 'Energía renovable (%)',
-                'funcionalidad': 'Funcionalidad (1-10)',
-                'reciclabilidad': 'Reciclabilidad (%)',
+                'name': 'Nombre del dispositivo',
+                'power': 'Potencia (W)',
+                'hours': 'Horas de uso diario',
+                'days': 'Días de uso al año',
+                'weight': 'Peso del dispositivo (kg)',
+                'life': 'Vida útil (años)',
+                'renewable_energy': 'Energía renovable (%)',
+                'functionality': 'Funcionalidad (1-10)',
+                'recyclability': 'Reciclabilidad (%)',
                 'B': 'Baterías vida útil',
                 'Wb': 'Peso batería (g)',
                 'M': 'Mantenimientos',
@@ -129,7 +129,7 @@ def show_device(device, idx):
 
 def show_global_results():
     """Shows the global results of the system."""
-    if "global_result" not in st.session_state:
+    if "global_result" not in st.session_state or st.session_state["global_result"] is None:
         return
 
     # Determine weights used in global calculation
@@ -186,7 +186,7 @@ def show_global_results():
         else:
             st.markdown("**Desviación estándar de los índices individuales:** N/A")
             
-        if 'global_calculation_date' not in st.session_state:
+        if 'global_calculation_date' not in st.session_state or st.session_state.global_calculation_date is None:
             st.session_state.global_calculation_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         st.markdown(f"**Fecha y hora del cálculo global:** {st.session_state.global_calculation_date}")
         
@@ -196,7 +196,7 @@ def show_global_results():
             
         st.markdown("**Pesos utilizados para el cálculo global**")
         # Get configuration name from weights snapshot
-        config_name = st.session_state.get('weights_snapshot', {}).get('nombre_configuracion', 'Desconocido')
+        config_name = st.session_state.get('weights_snapshot', {}).get('config_name', 'Desconocido')
         st.markdown(f"**Configuración de pesos:** {config_name}")
         
         clean_weights = {}
@@ -215,7 +215,7 @@ def show_global_results():
         st.markdown("**Dispositivos incluidos en el cálculo global**")
         if included_devices:
             device_data = {
-                'Nombre': [d['nombre'] for d in included_devices],
+                'Nombre': [d['name'] for d in included_devices],
                 'Índice de Sostenibilidad': [float(d['result']['sustainability_index']) if 'result' in d else None for d in included_devices]
             }
             df_devices = pd.DataFrame(device_data)

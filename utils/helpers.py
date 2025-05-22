@@ -1,5 +1,4 @@
 import pandas as pd
-from utils.constants import IMPORT_COLUMN_MAPPING
 import streamlit as st
 from weights import get_recommended_weights
 
@@ -91,7 +90,7 @@ def create_weights_snapshot(user_weights, weights_mode):
     
     return {
         "mode": weights_mode,
-        "configuration_name": config_name,
+        "config_name": config_name,
         "manual_weights": clean_weights,  # Save normalized weights
         "ahp_weights": st.session_state.get("ahp_weights", {})
     } 

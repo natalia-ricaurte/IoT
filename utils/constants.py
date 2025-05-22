@@ -24,15 +24,15 @@ METRIC_NAMES_ES = {
 
 # Form keys and default values
 FORM_KEYS = {
-    'nombre': ("Sensor de temperatura", "Nombre descriptivo del dispositivo IoT."),
-    'potencia': (2.0, "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento."),
-    'horas': (24.0, "Cantidad de horas al día que el dispositivo está en uso."),
-    'dias': (365, "Número de días al año que el dispositivo opera."),
-    'peso': (0.1, "Peso total del dispositivo en kilogramos."),
-    'vida': (5, "Duración esperada del dispositivo antes de desecharse o reemplazarse."),
-    'energia_renovable': (30, "Porcentaje de energía que proviene de fuentes renovables."),
-    'funcionalidad': (8, "Nivel de funcionalidad y utilidad que ofrece el dispositivo."),
-    'reciclabilidad': (65, "Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil."),
+    'name': ("Sensor de temperatura", "Nombre descriptivo del dispositivo IoT."),
+    'power': (2.0, "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento."),
+    'hours': (24.0, "Cantidad de horas al día que el dispositivo está en uso."),
+    'days': (365, "Número de días al año que el dispositivo opera."),
+    'weight': (0.1, "Peso total del dispositivo en kilogramos."),
+    'life': (5, "Duración esperada del dispositivo antes de desecharse o reemplazarse."),
+    'renewable_energy': (30, "Porcentaje de energía que proviene de fuentes renovables."),
+    'functionality': (8, "Nivel de funcionalidad y utilidad que ofrece el dispositivo."),
+    'recyclability': (65, "Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil."),
     'B': (2, "Cantidad de baterías necesarias durante toda la vida útil del dispositivo."),
     'Wb': (50, "Peso de cada batería en gramos."),
     'M': (1, "Número de veces que el dispositivo requiere mantenimiento."),
@@ -40,27 +40,6 @@ FORM_KEYS = {
     'Wc': (20, "Peso promedio de cada componente reemplazado en gramos."),
     'W0': (200, "Peso total del dispositivo cuando es nuevo."),
     'W': (180, "Peso final del dispositivo después del uso.")
-}
-
-# Simplified column names and their mapping to internal names
-IMPORT_COLUMN_MAPPING = {
-    # simplified column name : internal name
-    "nombre": "nombre",
-    "potencia_w": "potencia",
-    "horas_uso_diario": "horas",
-    "dias_uso_anio": "dias",
-    "peso_kg": "peso",
-    "vida_util_anios": "vida",
-    "energia_renovable_pct": "energia_renovable",
-    "funcionalidad_1_10": "funcionalidad",
-    "reciclabilidad_pct": "reciclabilidad",
-    "baterias_vida_util": "B",
-    "peso_bateria_g": "Wb",
-    "mantenimientos": "M",
-    "componentes_reemplazados": "C",
-    "peso_componente_g": "Wc",
-    "peso_nuevo_g": "W0",
-    "peso_final_g": "W"
 }
 
 # Descriptions and units for each template field

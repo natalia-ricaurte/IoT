@@ -5,7 +5,7 @@ from weights import get_recommended_weights
 
 def initialize_manual_weights():
     """Initializes manual weights with recommended values."""
-    if 'manual_weights' not in st.session_state:
+    if 'manual_weights' not in st.session_state or st.session_state.manual_weights == {}:
         recommended_weights = get_recommended_weights()
         st.session_state.manual_weights = recommended_weights.copy()
     for id in METRIC_NAMES:
