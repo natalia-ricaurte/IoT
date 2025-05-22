@@ -1,21 +1,20 @@
 import streamlit as st
 import pandas as pd
-from utils.constants import METRIC_NAMES
+from utils.constants import METRIC_NAMES, RECOMMENDED_WEIGHTS
 from utils.helpers import to_dict_flat
-from weights import get_recommended_weights, validate_manual_weights
+from weights import validate_manual_weights
 
-def initialize_manual_weights():
-    """Initializes manual weights with recommended values."""
-    recommended_weights = get_recommended_weights()
-    # Initialize manual weights dictionary
-    st.session_state.manual_weights = recommended_weights.copy()
-    # Initialize individual weights
-    for k, v in recommended_weights.items():
+def reset_manual_weights():
+    """Resets manual weights to recommended values."""
+    # reset manual weights dictionary
+    st.session_state.manual_weights = RECOMMENDED_WEIGHTS
+    # reset individual weights
+    for k, v in RECOMMENDED_WEIGHTS.items():
         st.session_state[f"manual_weight_{k}"] = float(v)
 
 def show_recommended_weights():
-    """Shows the interface for recommended weights."""
-    user_weights = get_recommended_weights()
+    """Shows the interface for recommended weights."""  
+    user_weights = RECOMMENDED_WEIGHTS
     st.success("Se han cargado los pesos recomendados del modelo AHP+ODS.")
 
     weights_df = pd.DataFrame.from_dict(user_weights, orient='index', columns=['Peso'])
@@ -108,12 +107,12 @@ def show_manual_adjustment():
                 st.success(f"Configuración '{selection}' eliminada correctamente.")
                 st.rerun()
         if st.button("Reiniciar configuración"):
-            initialize_manual_weights()
+            reset_manual_weights()
             st.rerun()
 
     # Active configuration message before manual inputs
     current_weights = {k: st.session_state.get(f"manual_weight_{k}", 0) for k in METRIC_NAMES}
-    recommended_weights = get_recommended_weights()
+    recommended_weights = RECOMMENDED_WEIGHTS
     if to_dict_flat(current_weights) == to_dict_flat(recommended_weights):
         st.success("**Configuración activa: Pesos Recomendados**")
     else:
@@ -130,7 +129,7 @@ def show_manual_adjustment():
         # Get current weight value
         current_value = st.session_state.get(f"manual_weight_{id}")
         if current_value is None:
-            current_value = float(st.session_state.manual_weights.get(id, get_recommended_weights()[id]))
+            current_value = float(st.session_state.manual_weights.get(id, RECOMMENDED_WEIGHTS[id]))
             st.session_state[f"manual_weight_{id}"] = current_value
         
         value = st.number_input(
@@ -149,7 +148,7 @@ def show_manual_adjustment():
     # Ensure all metrics are present
     for id in METRIC_NAMES:
         if id not in user_weights:
-            user_weights[id] = float(st.session_state.get(f"manual_weight_{id}", get_recommended_weights()[id]))
+            user_weights[id] = float(st.session_state.get(f"manual_weight_{id}", RECOMMENDED_WEIGHTS[id]))
 
     temp_total = sum(user_weights.values())
     st.metric("Suma total de pesos", f"{temp_total:.3f}")
@@ -287,11 +286,11 @@ def show_weights_interface():
     
     if weight_mode == "Pesos Recomendados":
         show_recommended_weights()
-        return get_recommended_weights()
+        return RECOMMENDED_WEIGHTS
     elif weight_mode == "Ajuste Manual":
         return show_manual_adjustment()
     else:  # Calcular nuevos pesos
         show_calculated_weights()
         if 'ahp_weights' in st.session_state and st.session_state.ahp_weights is not None:
             return st.session_state.ahp_weights
-        return get_recommended_weights() 
+        return RECOMMENDED_WEIGHTS 

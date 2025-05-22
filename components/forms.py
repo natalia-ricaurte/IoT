@@ -1,8 +1,8 @@
 import streamlit as st
 import uuid
-from utils.constants import FORM_KEYS, METRIC_NAMES
+from utils.constants import FORM_KEYS, METRIC_NAMES, RECOMMENDED_WEIGHTS
 from model import IoTSustainability
-from weights import get_recommended_weights, validate_manual_weights
+from weights import validate_manual_weights
 from utils.helpers import to_dict_flat, create_weights_snapshot
 
 def initialize_form():
@@ -152,7 +152,7 @@ def process_form(form_data):
                     break
         else:
             st.warning("No hay pesos AHP calculados. Se usarán los pesos recomendados.")
-            user_weights = get_recommended_weights()
+            user_weights = RECOMMENDED_WEIGHTS
 
     elif st.session_state.weight_mode_radio == "Ajuste Manual":
         manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
@@ -162,7 +162,7 @@ def process_form(form_data):
             if to_dict_flat(config) == to_dict_flat(user_weights):
                 break
     else:
-        user_weights = get_recommended_weights()
+        user_weights = RECOMMENDED_WEIGHTS
 
     # Calculate sustainability index using these weights
     sensor = IoTSustainability(form_data['name'])

@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from components.charts import radar_chart
-from utils.constants import METRIC_NAMES, METRIC_NAMES_ES
+from utils.constants import METRIC_NAMES, METRIC_NAMES_ES, RECOMMENDED_WEIGHTS
 from utils.helpers import create_weights_snapshot
-from weights import get_recommended_weights, validate_manual_weights
+from weights import validate_manual_weights
 
 def show_device(device, idx):
     """Shows the chart, recommendations and complete details of the device."""
@@ -139,7 +139,7 @@ def show_global_results():
         manual_weights = {k: st.session_state.get(f"manual_weight_{k}", 0) for k in METRIC_NAMES}
         global_weights, _ = validate_manual_weights(manual_weights)
     else:
-        global_weights = get_recommended_weights()
+        global_weights = RECOMMENDED_WEIGHTS
     # Save global weights snapshot to show configuration name
     st.session_state['weights_snapshot'] = create_weights_snapshot(global_weights, st.session_state.weight_mode_radio)
 

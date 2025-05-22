@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from weights import get_recommended_weights
+from utils.constants import RECOMMENDED_WEIGHTS
 
 def to_dict_flat(d):
     """
@@ -70,7 +70,7 @@ def create_weights_snapshot(user_weights, weights_mode):
                     config_name = f"Configuración Calculada: {ahp_config_name}"
                     break
     elif weights_mode == "Ajuste Manual":
-        recommended_weights = get_recommended_weights()
+        recommended_weights = RECOMMENDED_WEIGHTS
         if to_dict_flat(clean_weights) == to_dict_flat(recommended_weights):
             config_name = "Pesos Recomendados"
         else:

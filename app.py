@@ -5,18 +5,28 @@ from datetime import datetime
 # Third-party libraries
 import streamlit as st
 
-# Local modules
-from utils.constants import METRIC_NAMES, FORM_KEYS, DASHBOARD_GUIDE
+# Local modules - Core
+from weights import validate_manual_weights
+from model import IoTSustainability
+
+# Local modules - Utils
+from utils.constants import METRIC_NAMES, FORM_KEYS, DASHBOARD_GUIDE, RECOMMENDED_WEIGHTS
 from utils.helpers import create_weights_snapshot, to_dict_flat, extract_weight_value
 from utils.state import initialize_state, reset_state
+
+# Local modules - Components
 from components.devices import show_device, show_global_results
 from components.forms import initialize_form
 from components.weights_ui import show_weights_interface
+
+# Local modules - Services
 from services.ahp_service import show_ahp_matrix
 from services.export import export_results_excel, export_devices_list
-from services.import_service import generate_excel_template, read_devices_file, generate_json_template
-from weights import get_recommended_weights, validate_manual_weights
-from model import IoTSustainability
+from services.import_service import (
+    generate_excel_template,
+    read_devices_file,
+    generate_json_template
+)
 
 # --- APPLICATION INITIALIZATION ---
 st.set_page_config(page_title="Dashboard Sostenibilidad IoT", page_icon="🌱", layout="wide")
@@ -252,7 +262,7 @@ with import_container:
                                     weights_config_name = f"Configuración Calculada: {ahp_config_name}"
                                     break
                         else:
-                            user_weights = get_recommended_weights()
+                            user_weights = RECOMMENDED_WEIGHTS
                             weights_config_name = "Pesos Recomendados"
                     elif current_weight_mode == "Ajuste Manual":
                         manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
@@ -267,7 +277,7 @@ with import_container:
                                 weights_config_name = f"Configuración Manual: {manual_config_name}"
                                 break
                     else:  # Pesos Recomendados
-                        user_weights = get_recommended_weights()
+                        user_weights = RECOMMENDED_WEIGHTS
                         weights_config_name = "Pesos Recomendados"                    
                     sensor = IoTSustainability(name)
                     sensor.weights = {k: float(extract_weight_value(v)) for k, v in user_weights.items()}
@@ -352,7 +362,7 @@ with import_container:
                                     weights_config_name = f"Configuración Calculada: {ahp_config_name}"
                                     break
                         else:
-                            user_weights = get_recommended_weights()
+                            user_weights = RECOMMENDED_WEIGHTS
                             weights_config_name = "Pesos Recomendados"
                     elif current_weight_mode == "Ajuste Manual":
                         manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
@@ -368,7 +378,7 @@ with import_container:
                                 weights_config_name = f"Configuración Manual: {manual_config_name}"
                                 break
                     else:
-                        user_weights = get_recommended_weights()
+                        user_weights = RECOMMENDED_WEIGHTS
                         weights_config_name = "Pesos Recomendados"
 
                     sensor = IoTSustainability(name)
@@ -495,7 +505,7 @@ if submitted:
                     break
         else:
             st.warning("No hay pesos AHP calculados. Se usarán los pesos recomendados.")
-            user_weights = get_recommended_weights()
+            user_weights = RECOMMENDED_WEIGHTS
             weights_config_name = "Pesos Recomendados"
     elif st.session_state.weight_mode_radio == "Ajuste Manual":
         manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
@@ -512,7 +522,7 @@ if submitted:
                 weights_config_name = f"Configuración Manual: {manual_config_name}"
                 break
     else:
-        user_weights = get_recommended_weights()
+        user_weights = RECOMMENDED_WEIGHTS
         weights_config_name = "Pesos Recomendados"
 
     # Calculate sustainability index using these weights

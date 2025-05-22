@@ -1,4 +1,10 @@
-# Metric names definition
+from weights import get_recommended_weights
+
+# Recommended weights
+recommended_weights = get_recommended_weights()
+RECOMMENDED_WEIGHTS = recommended_weights.copy()
+
+# Metric names definitions
 METRIC_NAMES = {
     'EC': 'Energy Consumption',
     'CF': 'Carbon Footprint',
@@ -20,7 +26,6 @@ METRIC_NAMES_ES = {
     'RC': 'Reciclabilidad',
     'MT': 'Mantenimiento'
 }
-
 
 # Form keys and default values
 FORM_KEYS = {

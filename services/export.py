@@ -9,9 +9,9 @@ import pandas as pd
 import io
 import json
 
-from utils.constants import METRIC_NAMES_ES, METRIC_NAMES, EXPORT_COLUMN_MAPPING
+from utils.constants import METRIC_NAMES_ES, METRIC_NAMES, EXPORT_COLUMN_MAPPING, RECOMMENDED_WEIGHTS
 from utils.helpers import to_dict_flat
-from weights import get_recommended_weights, validate_manual_weights
+from weights import validate_manual_weights
 
 class ExcelExporter:
     def __init__(self):
@@ -40,7 +40,7 @@ class ExcelExporter:
                     break
         else:
             config_name = "Pesos Recomendados"
-            global_weights = get_recommended_weights()
+            global_weights = RECOMMENDED_WEIGHTS
         
         return config_name, global_weights
 
@@ -260,8 +260,7 @@ class ExcelExporter:
             return "Desconocido"
 
         if weight_mode == "Ajuste Manual":
-            from weights import get_recommended_weights
-            recommended = get_recommended_weights()
+            recommended = RECOMMENDED_WEIGHTS
             if to_dict_flat(cleaned_weights) == to_dict_flat(recommended):
                 return "Pesos Recomendados"
         
