@@ -1,26 +1,43 @@
-# Definición de nombres de métricas
-NOMBRES_METRICAS = {
-    'CE': 'Consumo de Energía',
-    'HC': 'Huella de Carbono',
-    'EW': 'E-waste',
-    'ER': 'Energía Renovable',
-    'EE': 'Eficiencia Energética',
-    'DP': 'Durabilidad',
-    'RC': 'Reciclabilidad',
-    'IM': 'Mantenimiento'
+from weights import get_recommended_weights
+
+# Recommended weights
+recommended_weights = get_recommended_weights()
+RECOMMENDED_WEIGHTS = recommended_weights.copy()
+
+# Metric names definitions
+METRIC_NAMES = {
+    'EC': 'Energy Consumption',
+    'CF': 'Carbon Footprint',
+    'EW': 'Electronic Waste',
+    'RE': 'Renewable Energy Use',
+    'EE': 'Energy Efficiency',
+    'PD': 'Product Durability',
+    'RC': 'Recyclability',
+    'MT': 'Maintenance'
 }
 
-# Claves y valores por defecto para el formulario
+METRIC_NAMES_ES = {
+    'EC': 'Consumo de Energía',
+    'CF': 'Huella de Carbono',
+    'EW': 'Residuos Electrónicos',
+    'RE': 'Uso de Energía Renovable',
+    'EE': 'Eficiencia Energética',
+    'PD': 'Durabilidad del Producto',
+    'RC': 'Reciclabilidad',
+    'MT': 'Mantenimiento'
+}
+
+# Form keys and default values
 FORM_KEYS = {
-    'nombre': ("Sensor de temperatura", "Nombre descriptivo del dispositivo IoT."),
-    'potencia': (2.0, "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento."),
-    'horas': (24.0, "Cantidad de horas al día que el dispositivo está en uso."),
-    'dias': (365, "Número de días al año que el dispositivo opera."),
-    'peso': (0.1, "Peso total del dispositivo en kilogramos."),
-    'vida': (5, "Duración esperada del dispositivo antes de desecharse o reemplazarse."),
-    'energia_renovable': (30, "Porcentaje de energía que proviene de fuentes renovables."),
-    'funcionalidad': (8, "Nivel de funcionalidad y utilidad que ofrece el dispositivo."),
-    'reciclabilidad': (65, "Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil."),
+    'name': ("Sensor de temperatura", "Nombre descriptivo del dispositivo IoT."),
+    'power': (2.0, "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento."),
+    'hours': (24.0, "Cantidad de horas al día que el dispositivo está en uso."),
+    'days': (365, "Número de días al año que el dispositivo opera."),
+    'weight': (0.1, "Peso total del dispositivo en kilogramos."),
+    'life': (5, "Duración esperada del dispositivo antes de desecharse o reemplazarse."),
+    'renewable_energy': (30, "Porcentaje de energía que proviene de fuentes renovables."),
+    'functionality': (8, "Nivel de funcionalidad y utilidad que ofrece el dispositivo."),
+    'recyclability': (65, "Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil."),
     'B': (2, "Cantidad de baterías necesarias durante toda la vida útil del dispositivo."),
     'Wb': (50, "Peso de cada batería en gramos."),
     'M': (1, "Número de veces que el dispositivo requiere mantenimiento."),
@@ -30,29 +47,8 @@ FORM_KEYS = {
     'W': (180, "Peso final del dispositivo después del uso.")
 }
 
-# Nombres simplificados de columnas y su mapeo a nombres internos
-MAPEO_COLUMNAS_IMPORTACION = {
-    # nombre de columna simplificado : nombre interno
-    "nombre": "nombre",
-    "potencia_w": "potencia",
-    "horas_uso_diario": "horas",
-    "dias_uso_anio": "dias",
-    "peso_kg": "peso",
-    "vida_util_anios": "vida",
-    "energia_renovable_pct": "energia_renovable",
-    "funcionalidad_1_10": "funcionalidad",
-    "reciclabilidad_pct": "reciclabilidad",
-    "baterias_vida_util": "B",
-    "peso_bateria_g": "Wb",
-    "mantenimientos": "M",
-    "componentes_reemplazados": "C",
-    "peso_componente_g": "Wc",
-    "peso_nuevo_g": "W0",
-    "peso_final_g": "W"
-}
-
-# Descripciones y unidades para cada campo de la plantilla
-DESCRIPCION_COLUMNAS_IMPORTACION = {
+# Descriptions and units for each template field
+IMPORT_COLUMN_DESCRIPTIONS = {
     "nombre": "Nombre descriptivo del dispositivo IoT.",
     "potencia_w": "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento.",
     "horas_uso_diario": "Cantidad de horas al día que el dispositivo está en uso.",
@@ -71,71 +67,14 @@ DESCRIPCION_COLUMNAS_IMPORTACION = {
     "peso_final_g": "Peso final del dispositivo después del uso (gramos)."
 }
 
-# Mapeo de nombres de columnas del archivo importado a nombres internos
-MAPEO_COLUMNAS_IMPORTACION = {
-    # Nombres exactos de la plantilla (orden y formato idéntico)
-    "Nombre del dispositivo": "nombre",
-    "Potencia (W)": "potencia",
-    "Horas uso diario": "horas",
-    "Días uso/año": "dias",
-    "Peso dispositivo (kg)": "peso",
-    "Vida útil (años)": "vida",
-    "Energía renovable (%)": "energia_renovable",
-    "Funcionalidad (1-10)": "funcionalidad",
-    "Reciclabilidad (%)": "reciclabilidad",
-    "Baterías vida útil": "B",
-    "Peso batería (g)": "Wb",
-    "Mantenimientos": "M",
-    "Componentes reemplazados": "C",
-    "Peso componente (g)": "Wc",
-    "Peso nuevo (g)": "W0",
-    "Peso final (g)": "W",
-    
-    # Variaciones comunes
-    "Nombre": "nombre",
-    "Potencia": "potencia",
-    "Horas": "horas",
-    "Días": "dias",
-    "Peso": "peso",
-    "Vida": "vida",
-    "Energía Renovable": "energia_renovable",
-    "Funcionalidad": "funcionalidad",
-    "Reciclabilidad": "reciclabilidad",
-    "Baterías": "B",
-    "Peso Batería": "Wb",
-    "Mantenimiento": "M",
-    "Componentes": "C",
-    "Peso Componente": "Wc",
-    "Peso Inicial": "W0",
-    "Peso Final": "W",
-    
-    # Nombres en inglés
-    "Device Name": "nombre",
-    "Power (W)": "potencia",
-    "Daily Hours": "horas",
-    "Days per Year": "dias",
-    "Weight (kg)": "peso",
-    "Lifetime (years)": "vida",
-    "Renewable Energy (%)": "energia_renovable",
-    "Functionality (1-10)": "funcionalidad",
-    "Recyclability (%)": "reciclabilidad",
-    "Batteries": "B",
-    "Battery Weight (g)": "Wb",
-    "Maintenance": "M",
-    "Components": "C",
-    "Component Weight (g)": "Wc",
-    "Initial Weight (g)": "W0",
-    "Final Weight (g)": "W"
-}
-
-ADVERTENCIA_IMPORTACION = (
+IMPORT_WARNING = (
     "IMPORTANTE: No cambies los nombres de las columnas para evitar errores de importación. "
     "El sistema solo acepta los nombres exactos de la plantilla, sin variantes ni traducciones. "
     "No cambies el orden de las hojas ni elimines la hoja de datos (debe ser la primera hoja del archivo). "
     "Puedes renombrar el archivo, pero asegúrate de mantener la estructura de la plantilla."
 )
 
-GUIA_USO_DASHBOARD = f"""
+DASHBOARD_GUIDE = f"""
 ### Métricas clave del modelo
 **Métricas de sostenibilidad evaluadas:**
 1. **CE - Consumo de Energía:** kWh anuales usados por el dispositivo.
@@ -160,7 +99,7 @@ GUIA_USO_DASHBOARD = f"""
 
 2. **Ingresa las características de tus dispositivos IoT**
    - Puedes completar el formulario manualmente **o importar una lista de dispositivos usando la plantilla**.
-   - {ADVERTENCIA_IMPORTACION}
+   - {IMPORT_WARNING}
    - La plantilla incluye una hoja de ayuda con la descripción y unidad de cada campo.
    - Sube el archivo en formato Excel, CSV o JSON y revisa los datos antes de añadirlos al sistema.
    - Tras importar, puedes añadir los dispositivos individualmente o todos juntos.
@@ -208,17 +147,17 @@ GUIA_USO_DASHBOARD = f"""
 - Los archivos exportados incluyen información sobre qué dispositivos fueron incluidos en el cálculo global para facilitar el seguimiento y la trazabilidad.
 """
 
-# Mapeo de nombres internos a nombres de plantilla para exportación
-MAPEO_COLUMNAS_EXPORTACION = {
-    "nombre": "nombre",
-    "potencia": "potencia_w",
-    "horas": "horas_uso_diario",
-    "dias": "dias_uso_anio",
-    "peso": "peso_kg",
-    "vida": "vida_util_anios",
-    "energia_renovable": "energia_renovable_pct",
-    "funcionalidad": "funcionalidad_1_10",
-    "reciclabilidad": "reciclabilidad_pct",
+# Mapping of internal names to template names for export
+EXPORT_COLUMN_MAPPING = {
+    "name": "nombre",
+    "power": "potencia_w",
+    "hours": "horas_uso_diario",
+    "days": "dias_uso_anio",
+    "weight": "peso_kg",
+    "life": "vida_util_anios",
+    "renewable_energy": "energia_renovable_pct",
+    "functionality": "funcionalidad_1_10",
+    "recyclability": "reciclabilidad_pct",
     "B": "baterias_vida_util",
     "Wb": "peso_bateria_g",
     "M": "mantenimientos",

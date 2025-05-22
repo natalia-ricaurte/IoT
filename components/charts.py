@@ -1,31 +1,31 @@
 from streamlit_echarts import st_echarts
 
-def radar_chart(metricas, titulo, key):
-    """Genera un gráfico radar para visualizar las métricas de sostenibilidad.
+def radar_chart(metrics, title, key):
+    """Generates a radar chart to visualize sustainability metrics.
     
     Args:
-        metricas (dict): Diccionario con las métricas y sus valores
-        titulo (str): Título del gráfico
-        key (str): Clave única para el componente Streamlit
+        metrics (dict): Dictionary with metrics and their values
+        title (str): Chart title
+        key (str): Unique key for the Streamlit component
     """
-    etiquetas = {
-        'CE': 'Cons. Energía', 
-        'HC': 'Huella CO₂', 
+    labels = {
+        'EC': 'Cons. Energía', 
+        'CF': 'Huella CO₂', 
         'EW': 'E-waste',
-        'ER': 'Energía Renov.', 
+        'RE': 'Energía Renov.', 
         'EE': 'Eficiencia', 
-        'DP': 'Durabilidad',
+        'PD': 'Durabilidad',
         'RC': 'Reciclabilidad', 
-        'IM': 'Mantenimiento'
+        'MT': 'Mantenimiento'
     }
     
-    labels = [etiquetas[m] for m in metricas.keys()]
-    valores = list(metricas.values())
+    label_values = [labels[m] for m in metrics.keys()]
+    values = list(metrics.values())
 
     options = {
         "backgroundColor": "#111111",
         "title": {
-            "text": titulo,
+            "text": title,
             "left": "center",
             "top": "5%",
             "textStyle": {
@@ -37,7 +37,7 @@ def radar_chart(metricas, titulo, key):
             "trigger": "item"
         },
         "radar": {
-            "indicator": [{"name": label, "max": 10} for label in labels],
+            "indicator": [{"name": label, "max": 10} for label in label_values],
             "radius": "60%",
             "center": ["50%", "55%"],
             "splitNumber": 5,
@@ -54,12 +54,12 @@ def radar_chart(metricas, titulo, key):
         },
         "series": [
             {
-                "name": titulo,
+                "name": title,
                 "type": "radar",
                 "data": [
                     {
-                        "value": valores,
-                        "name": titulo,
+                        "value": values,
+                        "name": title,
                         "itemStyle": {
                             "color": "#3498db"
                         },
@@ -76,5 +76,5 @@ def radar_chart(metricas, titulo, key):
         ]
     }
 
-    # Renderizar con ECharts usando el key único
+    # Render with ECharts using the unique key
     st_echarts(options=options, height="500px", key=key) 

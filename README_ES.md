@@ -168,6 +168,8 @@ IoT/
 - **Agrupación de Dispositivos**: Permitir crear grupos de dispositivos basados en diferentes criterios (tipo, ubicación, función, etc.) y calcular índices de sostenibilidad por grupo, facilitando el análisis comparativo entre diferentes categorías de dispositivos IoT.
 - **Integración con APIs**: Permitir la conexión con APIs de proveedores de energía y servicios IoT para obtener datos en tiempo real sobre consumo energético y otros parámetros relevantes.
 - **Exportación a Formatos Especializados**: Añadir soporte para exportar resultados en formatos específicos para reportes de sostenibilidad corporativos o certificaciones ambientales.
+- **Validación del formato de importación**: validar nombres de columnas y tipos de datos
+- **Gestión de dispositivos**: permitir al usuario editar los datos de los dispositivos
 
 ## Nota sobre la Integridad del Modelo
 
