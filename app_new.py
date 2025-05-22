@@ -246,29 +246,29 @@ with import_container:
                     if current_weight_mode == "Calcular nuevos pesos":
                         if current_ahp_weights:
                             user_weights = current_ahp_weights
-                            weight_config_name = "Pesos Calculados"
+                            weights_config_name = "Pesos Calculados"
                             for ahp_config_name, config in st.session_state.ahp_configurations.items():
                                 if to_dict_flat(config['weights']) == to_dict_flat(current_ahp_weights):
-                                    weight_config_name = f"Configuración Calculada: {ahp_config_name}"
+                                    weights_config_name = f"Configuración Calculada: {ahp_config_name}"
                                     break
                         else:
                             user_weights = get_recommended_weights()
-                            weight_config_name = "Pesos Recomendados"
+                            weights_config_name = "Pesos Recomendados"
                     elif current_weight_mode == "Ajuste Manual":
                         manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
                         user_weights, _ = validate_manual_weights(manual_weights)
-                        weight_config_name = "Pesos Manuales Personalizados"
+                        weights_config_name = "Pesos Manuales Personalizados"
                         for manual_config_name, config in st.session_state.saved_weights.items():
                             normalized_config = {k: float(v) for k, v in config.items()}
                             total = sum(normalized_config.values())
                             if total != 1.0:
                                 normalized_config = {k: v/total for k, v in normalized_config.items()}
                             if to_dict_flat(normalized_config) == to_dict_flat(user_weights):
-                                weight_config_name = f"Configuración Manual: {manual_config_name}"
+                                weights_config_name = f"Configuración Manual: {manual_config_name}"
                                 break
                     else:  # Pesos Recomendados
                         user_weights = get_recommended_weights()
-                        weight_config_name = "Pesos Recomendados"                    
+                        weights_config_name = "Pesos Recomendados"                    
                     sensor = IoTSustainability(device.get('nombre', 'Sin nombre'))
                     sensor.weights = {k: float(extract_weight_value(v)) for k, v in user_weights.items()}
                     sensor.calculate_energy_consumption(
@@ -346,18 +346,18 @@ with import_container:
                     if current_weight_mode == "Calcular nuevos pesos":
                         if current_ahp_weights:
                             user_weights = current_ahp_weights
-                            weight_config_name = "Pesos Calculados"
+                            weights_config_name = "Pesos Calculados"
                             for ahp_config_name, config in st.session_state.ahp_configurations.items():
                                 if to_dict_flat(config['weights']) == to_dict_flat(user_weights):
-                                    weight_config_name = f"Configuración Calculada: {ahp_config_name}"
+                                    weights_config_name = f"Configuración Calculada: {ahp_config_name}"
                                     break
                         else:
                             user_weights = get_recommended_weights()
-                            weight_config_name = "Pesos Recomendados"
+                            weights_config_name = "Pesos Recomendados"
                     elif current_weight_mode == "Ajuste Manual":
                         manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
                         user_weights, _ = validate_manual_weights(manual_weights)
-                        weight_config_name = "Pesos Manuales Personalizados"
+                        weights_config_name = "Pesos Manuales Personalizados"
                         for manual_config_name, config in st.session_state.saved_weights.items():
                             # Normalize saved configuration before comparing
                             normalized_config = {k: float(v) for k, v in config.items()}
@@ -365,11 +365,11 @@ with import_container:
                             if total != 1.0:
                                 normalized_config = {k: v/total for k, v in normalized_config.items()}
                             if to_dict_flat(normalized_config) == to_dict_flat(user_weights):
-                                weight_config_name = f"Configuración Manual: {manual_config_name}"
+                                weights_config_name = f"Configuración Manual: {manual_config_name}"
                                 break
                     else:
                         user_weights = get_recommended_weights()
-                        weight_config_name = "Pesos Recomendados"
+                        weights_config_name = "Pesos Recomendados"
 
                     sensor = IoTSustainability(name)
                     sensor.weights = {k: float(extract_weight_value(v)) for k, v in user_weights.items()}

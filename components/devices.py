@@ -4,14 +4,14 @@ import numpy as np
 from datetime import datetime
 from components.charts import radar_chart
 from utils.constants import METRIC_NAMES
-from utils.helpers import create_weights_snapshot, extract_weight_value
+from utils.helpers import create_weights_snapshot
 from weights import get_recommended_weights, validate_manual_weights
 
 def show_device(device, idx):
     """Shows the chart, recommendations and complete details of the device."""
-    if device.get("calculo_realizado", False) and "resultado" in device:
-        result = device["resultado"]
-        name = device["nombre"]
+    if device.get("calculation_done", False) and "result" in device:
+        result = device["result"]
+        name = device["name"]
 
         # Create columns to organize the layout
         col1, col2 = st.columns([2, 1])
@@ -20,26 +20,26 @@ def show_device(device, idx):
         with col1:
             st.markdown(f"### {name}")
             radar_chart(
-                result["metricas_normalizadas"], 
+                result["normalized_metrics"], 
                 f"Métricas Normalizadas - {name}",
                 key=f"radar_{idx}"
             )
 
         # Recommendations on the right
         with col2:
-            st.metric("Índice de Sostenibilidad", f"{result['indice_sostenibilidad']:.2f}/10")
+            st.metric("Índice de Sostenibilidad", f"{result['sustainability_index']:.2f}/10")
             st.markdown("### Recomendaciones")
             recommendations = []
 
-            if result['metricas_normalizadas']['ER'] < 5:
+            if result['normalized_metrics']['RE'] < 5:
                 recommendations.append("Aumentar uso de energía renovable.")
-            if result['metricas_normalizadas']['DP'] < 5:
+            if result['normalized_metrics']['PD'] < 5:
                 recommendations.append("Incrementar durabilidad del hardware.")
-            if result['metricas_normalizadas']['IM'] < 5:
+            if result['normalized_metrics']['MT'] < 5:
                 recommendations.append("Reducir impacto de mantenimiento.")
-            if result['metricas_normalizadas']['EE'] < 5:
+            if result['normalized_metrics']['EE'] < 5:
                 recommendations.append("Mejorar eficiencia energética.")
-            if result['indice_sostenibilidad'] < 6:
+            if result['sustainability_index'] < 6:
                 recommendations.append("Revisar métricas críticas para mejorar el índice global.")
 
             for rec_idx, rec in enumerate(recommendations):
@@ -105,7 +105,7 @@ def show_device(device, idx):
             
             if clean_weights:
                 # Show the explicitly saved configuration name
-                config_name = weights_snapshot.get('nombre_configuracion', 'Desconocido')
+                config_name = weights_snapshot.get('config_name', 'Desconocido')
                 st.markdown(f"**Configuración de pesos:** {config_name}")
                 df_weights = pd.DataFrame.from_dict(clean_weights, orient='index', columns=['Peso'])
                 df_weights.index = df_weights.index.map(METRIC_NAMES)
@@ -151,19 +151,19 @@ def show_global_results():
     # Average chart on the left
     col1, col2 = st.columns([2, 1])
     with col1:
-        radar_chart(metrics_average, "Promedio de Métricas Normalizadas", key="radar_total")
+        radar_chart(metrics_average, "Promedio de Métricas Normalizadas", key="average_metrics_radar")
     # Global recommendations on the right
     with col2:
         st.metric("Índice de Sostenibilidad Global", f"{total_average:.2f}/10")
         st.markdown("### Recomendaciones Globales")
         global_recommendations = []
-        if metrics_average["ER"] < 5:
+        if metrics_average['RE'] < 5:
             global_recommendations.append("Aumentar uso de energía renovable.")
-        if metrics_average["DP"] < 5:
+        if metrics_average['PD'] < 5:
             global_recommendations.append("Incrementar durabilidad del hardware.")
-        if metrics_average["IM"] < 5:
+        if metrics_average['MT'] < 5:
             global_recommendations.append("Reducir impacto de mantenimiento.")
-        if metrics_average["EE"] < 5:
+        if metrics_average['EE'] < 5:
             global_recommendations.append("Mejorar eficiencia energética.")
         if total_average < 6:
             global_recommendations.append("Revisar métricas críticas para mejorar el índice global.")
@@ -179,7 +179,7 @@ def show_global_results():
         if len(devices) != len(included_devices):
             st.info(f"⚠️ Nota: {len(devices) - len(included_devices)} dispositivos fueron excluidos del cálculo.")
             
-        indices = [d['resultado']['indice_sostenibilidad'] for d in included_devices if 'resultado' in d]
+        indices = [d['result']['sustainability_index'] for d in included_devices if 'result' in d]
         if len(indices) > 1:
             std = np.std(indices)
             st.markdown(f"**Desviación estándar de los índices individuales:** {std:.2f}")
@@ -216,7 +216,7 @@ def show_global_results():
         if included_devices:
             device_data = {
                 'Nombre': [d['nombre'] for d in included_devices],
-                'Índice de Sostenibilidad': [float(d['resultado']['indice_sostenibilidad']) if 'resultado' in d else None for d in included_devices]
+                'Índice de Sostenibilidad': [float(d['result']['sustainability_index']) if 'result' in d else None for d in included_devices]
             }
             df_devices = pd.DataFrame(device_data)
             st.dataframe(df_devices.style.format({'Índice de Sostenibilidad': '{:.2f}'}), use_container_width=True)

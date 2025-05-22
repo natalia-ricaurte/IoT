@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 from utils.constants import METRIC_NAMES
-from utils.helpers import to_dict_flat, create_weights_snapshot
+from utils.helpers import to_dict_flat
 from weights import get_recommended_weights, validate_manual_weights
-from services.ahp_service import show_ahp_matrix
 
 def initialize_manual_weights():
     """Initializes manual weights with recommended values."""
@@ -256,78 +255,43 @@ def show_calculated_weights():
                     st.rerun()
 
 def show_weights_interface():
-    """Muestra la interfaz para configurar los pesos de las métricas."""
-    # Weight mode selection
+    """Shows the weights interface for weight gestion."""
+    st.subheader("Ajuste de Pesos por Métrica")
+
+    with st.expander("Información sobre los métodos de asignación de pesos"):
+        st.markdown("""
+        ### Método de Asignación de Pesos
+        El sistema ofrece tres formas de asignar pesos a las métricas:
+
+        1. **Pesos Recomendados**: 
+           - Basados en análisis y alineación con ODS
+           - Ideal para usuarios que buscan una evaluación estándar
+           - No requiere configuración adicional
+
+        2. **Ajuste Manual**:
+           - Permite personalizar los pesos según necesidades específicas
+           - Útil cuando se tiene conocimiento experto del dominio
+           - Los pesos deben sumar 1.0
+
+        3. **Calcular nuevos pesos**:
+           - Utiliza la Matriz de Comparación por Pares
+           - Requiere evaluar la importancia relativa entre métricas
+           - Incluye verificación de consistencia
+        """)
+    
     weight_mode = st.radio(
-        "Selecciona el modo de configuración de pesos:",
-        ["Pesos Recomendados", "Calcular nuevos pesos", "Ajuste Manual"],
+        "Selecciona el método de asignación de pesos:",
+        ("Pesos Recomendados", "Ajuste Manual", "Calcular nuevos pesos"),
         key="weight_mode_radio"
     )
     
     if weight_mode == "Pesos Recomendados":
-        st.info("Se utilizarán los pesos recomendados por defecto.")
-        if 'ahp_weights' in st.session_state:
-            del st.session_state['ahp_weights']
-        if 'manual_weights' in st.session_state:
-            del st.session_state['manual_weights']
-    
-    elif weight_mode == "Calcular nuevos pesos":
-        st.info("Usa la matriz de comparación para calcular los pesos.")
-        if st.button("Abrir matriz de comparación"):
-            st.session_state.ahp_matrix_open = True
-            st.rerun()
-    
-    else:  # Ajuste Manual
-        st.info("Ajusta manualmente los pesos de cada métrica.")
-        
-        # Create columns for manual weights
-        cols = st.columns(3)
-        manual_weights = {}
-        
-        for i, metric in enumerate(METRIC_NAMES):
-            col_idx = i % 3
-            with cols[col_idx]:
-                weight = st.number_input(
-                    f"Peso para {metric}",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=st.session_state.get(f"manual_weight_{metric}", 0.0),
-                    step=0.1,
-                    key=f"manual_weight_{metric}"
-                )
-                manual_weights[metric] = weight
-        
-        # Validate weights
-        if st.button("Validar pesos"):
-            valid_weights, error = validate_manual_weights(manual_weights)
-            if error:
-                st.error(error)
-            else:
-                st.session_state.manual_weights = valid_weights
-                st.success("Pesos validados correctamente.")
-        
-        # Save weights configuration
-        if st.button("Guardar configuración"):
-            if 'manual_weights' in st.session_state:
-                config_name = st.text_input("Nombre de la configuración:")
-                if config_name:
-                    if 'saved_weights' not in st.session_state:
-                        st.session_state.saved_weights = {}
-                    st.session_state.saved_weights[config_name] = st.session_state.manual_weights
-                    st.success(f"Configuración '{config_name}' guardada correctamente.")
-            else:
-                st.warning("Primero debes validar los pesos.")
-        
-        # Load saved configuration
-        if 'saved_weights' in st.session_state and st.session_state.saved_weights:
-            st.markdown("### Configuraciones guardadas")
-            config_name = st.selectbox(
-                "Selecciona una configuración guardada:",
-                list(st.session_state.saved_weights.keys())
-            )
-            if st.button("Cargar configuración"):
-                st.session_state.manual_weights = st.session_state.saved_weights[config_name]
-                for metric, weight in st.session_state.manual_weights.items():
-                    st.session_state[f"manual_weight_{metric}"] = weight
-                st.success(f"Configuración '{config_name}' cargada correctamente.")
-                st.rerun() 
+        show_recommended_weights()
+        return get_recommended_weights()
+    elif weight_mode == "Ajuste Manual":
+        return show_manual_adjustment()
+    else:  # Calcular nuevos pesos
+        show_calculated_weights()
+        if 'ahp_weights' in st.session_state and st.session_state.ahp_weights is not None:
+            return st.session_state.ahp_weights
+        return get_recommended_weights() 

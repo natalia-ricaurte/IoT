@@ -124,7 +124,7 @@ def show_ahp_matrix():
                 row[j+1].write(f"{st.session_state.comparison_matrix[i, j]:.2f}")
     st.markdown("---")
     # Action buttons
-    col_calc, col_save, col_space, col_cancel, col_reset = st.columns([1, 1, 2, 1, 1])
+    col_calc, col_save, col_cancel, col_reset = st.columns([1, 1, 1, 1])
     with col_calc:
         if st.button("Calcular pesos"):
             df_criteria = pd.DataFrame(

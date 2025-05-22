@@ -21,14 +21,6 @@ def to_dict_flat(d):
         return d
     return dict(d)
 
-def get_device_value(device, internal_name):
-    possible_keys = [k for k, v in IMPORT_COLUMN_MAPPING.items() if v == internal_name]
-    possible_keys.append(internal_name)
-    for key in possible_keys:
-        if key in device:
-            return device[key]
-    return 'N/A'
-
 def extract_weight_value(v):
     if isinstance(v, dict):
         for val in v.values():
@@ -72,13 +64,12 @@ def create_weights_snapshot(user_weights, weights_mode):
     config_name = "Pesos Recomendados"
     
     if weights_mode == "Calcular nuevos pesos":
+        config_name = "Pesos Calculados"
         if 'ahp_weights' in st.session_state:
             for ahp_config_name, config in st.session_state.ahp_configurations.items():
                 if to_dict_flat(config['weights']) == to_dict_flat(clean_weights):
                     config_name = f"Configuración Calculada: {ahp_config_name}"
                     break
-            if config_name == "Pesos Recomendados":
-                config_name = "Pesos Calculados"
     elif weights_mode == "Ajuste Manual":
         recommended_weights = get_recommended_weights()
         if to_dict_flat(clean_weights) == to_dict_flat(recommended_weights):

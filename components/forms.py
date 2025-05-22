@@ -14,61 +14,61 @@ def initialize_form():
 def show_device_form():
     """Shows the form for entering IoT device data."""
     submitted = False
-    with st.form("formulario_datos"):
+    with st.form("form_data"):
         st.subheader("Datos del dispositivo IoT")
         colA, colB = st.columns(2)
         
         # First form column
         with colA:
-            nombre = st.text_input(
+            name = st.text_input(
                 "Nombre del dispositivo", 
-                value=st.session_state["form_nombre"], 
+                value=st.session_state["form_name"], 
                 help="Nombre descriptivo del dispositivo IoT."
             )
-            potencia = st.number_input(
+            power = st.number_input(
                 "Potencia (W)", 
-                value=st.session_state["form_potencia"], 
+                value=st.session_state["form_power"], 
                 help="Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento."
             )
-            horas = st.number_input(
+            hours = st.number_input(
                 "Horas uso diario", 
-                value=st.session_state["form_horas"], 
+                value=st.session_state["form_hours"], 
                 help="Cantidad de horas al día que el dispositivo está en uso."
             )
-            dias = st.number_input(
+            days = st.number_input(
                 "Días uso/año", 
-                value=st.session_state["form_dias"], 
+                value=st.session_state["form_days"], 
                 help="Número de días al año que el dispositivo opera."
             )
-            peso = st.number_input(
+            weight = st.number_input(
                 "Peso dispositivo (kg)", 
-                value=st.session_state["form_peso"], 
+                value=st.session_state["form_weight"], 
                 help="Peso total del dispositivo en kilogramos."
             )
-            vida = st.number_input(
+            life = st.number_input(
                 "Vida útil (años)", 
-                value=st.session_state["form_vida"], 
+                value=st.session_state["form_life"], 
                 help="Duración esperada del dispositivo antes de desecharse o reemplazarse."
             )
 
         # Second form column
         with colB:
-            energia_renovable = st.slider(
+            renewable_energy = st.slider(
                 "Energía renovable (%)", 
                 0, 100, 
-                st.session_state["form_energia_renovable"], 
+                st.session_state["form_renewable_energy"], 
                 help="Porcentaje de energía que proviene de fuentes renovables."
             )
-            funcionalidad = st.slider(
+            functionality = st.slider(
                 "Funcionalidad (1-10)", 
                 1, 10, 
-                st.session_state["form_funcionalidad"], 
+                st.session_state["form_functionality"], 
                 help="Nivel de funcionalidad y utilidad que ofrece el dispositivo."
             )
-            reciclabilidad = st.slider(
+            recyclability = st.slider(
                 "Reciclabilidad (%)", 
                 0, 100, 
-                st.session_state["form_reciclabilidad"], 
+                st.session_state["form_recyclability"], 
                 help="Porcentaje del dispositivo que puede reciclarse al finalizar su vida útil."
             )
 
@@ -117,23 +117,23 @@ def show_device_form():
         submitted = st.form_submit_button("Añadir dispositivo")
 
     return submitted, {
-        'nombre': nombre,
-        'potencia': potencia,
-        'horas': horas,
-        'dias': dias,
-        'peso': peso,
-        'vida': vida,
-        'energia_renovable': energia_renovable,
-        'funcionalidad': funcionalidad,
-        'reciclabilidad': reciclabilidad,
-        'B': B,
-        'Wb': Wb,
-        'M': M,
-        'C': C,
-        'Wc': Wc,
-        'W0': W0,
-        'W': W
-    }
+    'name': name,
+    'power': power,
+    'daily_hours': hours,
+    'annual_days': days,
+    'weight': weight,
+    'lifespan': life,
+    'renewable_energy': renewable_energy,
+    'functionality': functionality,
+    'recyclability': recyclability,
+    'B': B,
+    'Wb': Wb,
+    'M': M,
+    'C': C,
+    'Wc': Wc,
+    'W0': W0,
+    'W': W
+}
 
 def process_form(form_data):
     """Processes form data and updates application state."""
@@ -147,59 +147,25 @@ def process_form(form_data):
         if 'ahp_weights' in st.session_state:
             user_weights = st.session_state.ahp_weights
             # Find active calculated configuration name
-            weights_config_name = "Pesos Calculados"
-            for ahp_config_name, config in st.session_state.ahp_configurations.items():
+            for config in st.session_state.ahp_configurations.items():
                 if to_dict_flat(config['weights']) == to_dict_flat(user_weights):
-                    weights_config_name = f"Configuración Calculada: {ahp_config_name}"
                     break
         else:
             st.warning("No hay pesos AHP calculados. Se usarán los pesos recomendados.")
             user_weights = get_recommended_weights()
-            weights_config_name = "Pesos Recomendados"
+
     elif st.session_state.weight_mode_radio == "Ajuste Manual":
         manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
         user_weights, _ = validate_manual_weights(manual_weights)
         # Find active manual configuration name
-        weights_config_name = "Pesos Manuales Personalizados"
-        for manual_config_name, config in st.session_state.saved_weights.items():
+        for config in st.session_state.saved_weights.items():
             if to_dict_flat(config) == to_dict_flat(user_weights):
-                weights_config_name = f"Configuración Manual: {manual_config_name}"
                 break
     else:
         user_weights = get_recommended_weights()
-        weights_config_name = "Pesos Recomendados"
-
-    # Create device with form data
-    device = {
-        "nombre": form_data["nombre"],
-        "potencia": form_data["potencia"],
-        "horas": form_data["horas"],
-        "dias": form_data["dias"],
-        "peso": form_data["peso"],
-        "vida": form_data["vida"],
-        "energia_renovable": form_data["energia_renovable"],
-        "funcionalidad": form_data["funcionalidad"],
-        "reciclabilidad": form_data["reciclabilidad"],
-        "B": form_data["B"],
-        "Wb": form_data["Wb"],
-        "M": form_data["M"],
-        "C": form_data["C"],
-        "Wc": form_data["Wc"],
-        "W0": form_data["W0"],
-        "W": form_data["W"],
-        "used_weights": user_weights,
-        "configuration_name": weights_config_name
-    }
-
-    # Add device to the list
-    st.session_state.devices.append(device)
-
-    # Clear form
-    for key in FORM_KEYS:
-        st.session_state[f"form_{key}"] = 0.0
 
     # Calculate sustainability index using these weights
-    sensor = IoTSustainability(form_data['nombre'])
+    sensor = IoTSustainability(form_data['name'])
     clean_weights = {}
     for k, v in user_weights.items():
         if isinstance(v, dict):
@@ -208,14 +174,14 @@ def process_form(form_data):
             clean_weights[k] = float(v)
         except Exception:
             continue
-    sensor.pesos = clean_weights
-    sensor.calculate_energy_consumption(form_data['potencia'], form_data['horas'], form_data['dias'])
+    sensor.weights = clean_weights
+    sensor.calculate_energy_consumption(form_data['power'], form_data['hours'], form_data['days'])
     sensor.calculate_carbon_footprint()
-    sensor.calculate_ewaste(form_data['peso'], form_data['vida'])
-    sensor.calculate_renewable_energy(form_data['energia_renovable'])
-    sensor.calculate_energy_efficiency(form_data['funcionalidad'])
-    sensor.calculate_durability(form_data['vida'])
-    sensor.calculate_recyclability(form_data['reciclabilidad'])
+    sensor.calculate_ewaste(form_data['weight'], form_data['life'])
+    sensor.calculate_renewable_energy(form_data['renewable_energy'])
+    sensor.calculate_energy_efficiency(form_data['functionality'])
+    sensor.calculate_durability(form_data['life'])
+    sensor.calculate_recyclability(form_data['recyclability'])
     sensor.calculate_maintenance_index(
         form_data['B'], form_data['Wb'], form_data['M'],
         form_data['C'], form_data['Wc'], form_data['W0'], form_data['W']
@@ -225,14 +191,14 @@ def process_form(form_data):
     device_data = {
         "id": str(uuid.uuid4()),
         **form_data,
-        "calculo_realizado": True,
+        "calculation_done": True,
         "used_weights": user_weights,
-        "resultado": result,
+        "result": result,
         # Save form and weights snapshot
         "snapshot_form": {k: st.session_state[f"form_{k}"] for k in FORM_KEYS},
         "weights_snapshot": create_weights_snapshot(user_weights, st.session_state.weight_mode_radio)
     }
 
     st.session_state.devices.append(device_data)
-    st.success(f"Dispositivo '{form_data['nombre']}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
+    st.success(f"Dispositivo '{form_data['name']}' añadido correctamente. Presiona 'Calcular Índice de Sostenibilidad Total' para ver los resultados.")
     st.rerun() 

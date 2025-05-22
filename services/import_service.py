@@ -49,51 +49,6 @@ def to_float(val):
         val = val.replace(',', '.')
     return float(val)
 
-def validate_and_process_devices(df):
-    """
-    Validates columns and data types of the devices DataFrame.
-    Returns a list of valid device dictionaries and a list of errors.
-    """
-    required_columns = [
-        "nombre", "potencia", "horas", "dias", "peso", "vida",
-        "energia_renovable", "funcionalidad", "reciclabilidad", "B",
-        "Wb", "M", "C", "Wc", "W0", "W"
-    ]
-    errors = []
-    devices = []
-    # Validate columns
-    for col in required_columns:
-        if col not in df.columns:
-            errors.append(f"Falta la columna requerida: {col}")
-    if errors:
-        return [], errors
-    # Validate and process each row
-    for idx, row in df.iterrows():
-        device = {}
-        try:
-            device = {
-                "nombre": str(row["nombre"]),
-                "potencia": float(row["potencia"]),
-                "horas": float(row["horas"]),
-                "dias": int(row["dias"]),
-                "peso": float(row["peso"]),
-                "vida": float(row["vida"]),
-                "energia_renovable": float(row["energia_renovable"]),
-                "funcionalidad": float(row["funcionalidad"]),
-                "reciclabilidad": float(row["reciclabilidad"]),
-                "B": int(row["B"]),
-                "Wb": float(row["Wb"]),
-                "M": int(row["M"]),
-                "C": int(row["C"]),
-                "Wc": float(row["Wc"]),
-                "W0": float(row["W0"]),
-                "W": float(row["W"])
-            }
-            devices.append(device)
-        except Exception as e:
-            errors.append(f"Error en la fila {idx+2}: {e}")
-    return devices, errors
-
 def generate_excel_template():
     """
     Generates and returns a buffer with the devices template in Excel format (.xlsx).

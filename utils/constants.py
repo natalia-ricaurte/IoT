@@ -1,14 +1,26 @@
 # Metric names definition
 METRIC_NAMES = {
-    'CE': 'Consumo de Energía',
-    'HC': 'Huella de Carbono',
-    'EW': 'E-waste',
-    'ER': 'Energía Renovable',
-    'EE': 'Eficiencia Energética',
-    'DP': 'Durabilidad',
-    'RC': 'Reciclabilidad',
-    'IM': 'Mantenimiento'
+    'EC': 'Energy Consumption',
+    'CF': 'Carbon Footprint',
+    'EW': 'Electronic Waste',
+    'RE': 'Renewable Energy Use',
+    'EE': 'Energy Efficiency',
+    'PD': 'Product Durability',
+    'RC': 'Recyclability',
+    'MT': 'Maintenance'
 }
+
+METRIC_NAMES_ES = {
+    'EC': 'Consumo de Energía',
+    'CF': 'Huella de Carbono',
+    'EW': 'Residuos Electrónicos',
+    'RE': 'Uso de Energía Renovable',
+    'EE': 'Eficiencia Energética',
+    'PD': 'Durabilidad del Producto',
+    'RC': 'Reciclabilidad',
+    'MT': 'Mantenimiento'
+}
+
 
 # Form keys and default values
 FORM_KEYS = {
@@ -69,63 +81,6 @@ IMPORT_COLUMN_DESCRIPTIONS = {
     "peso_componente_g": "Peso promedio de cada componente reemplazado en gramos.",
     "peso_nuevo_g": "Peso total del dispositivo cuando es nuevo (gramos).",
     "peso_final_g": "Peso final del dispositivo después del uso (gramos)."
-}
-
-# Mapping of imported file column names to internal names
-IMPORT_COLUMN_MAPPING = {
-    # Template exact names (identical order and format)
-    "Nombre del dispositivo": "nombre",
-    "Potencia (W)": "potencia",
-    "Horas uso diario": "horas",
-    "Días uso/año": "dias",
-    "Peso dispositivo (kg)": "peso",
-    "Vida útil (años)": "vida",
-    "Energía renovable (%)": "energia_renovable",
-    "Funcionalidad (1-10)": "funcionalidad",
-    "Reciclabilidad (%)": "reciclabilidad",
-    "Baterías vida útil": "B",
-    "Peso batería (g)": "Wb",
-    "Mantenimientos": "M",
-    "Componentes reemplazados": "C",
-    "Peso componente (g)": "Wc",
-    "Peso nuevo (g)": "W0",
-    "Peso final (g)": "W",
-    
-    # Common variations
-    "Nombre": "nombre",
-    "Potencia": "potencia",
-    "Horas": "horas",
-    "Días": "dias",
-    "Peso": "peso",
-    "Vida": "vida",
-    "Energía Renovable": "energia_renovable",
-    "Funcionalidad": "funcionalidad",
-    "Reciclabilidad": "reciclabilidad",
-    "Baterías": "B",
-    "Peso Batería": "Wb",
-    "Mantenimiento": "M",
-    "Componentes": "C",
-    "Peso Componente": "Wc",
-    "Peso Inicial": "W0",
-    "Peso Final": "W",
-    
-    # English names
-    "Device Name": "nombre",
-    "Power (W)": "potencia",
-    "Daily Hours": "horas",
-    "Days per Year": "dias",
-    "Weight (kg)": "peso",
-    "Lifetime (years)": "vida",
-    "Renewable Energy (%)": "energia_renovable",
-    "Functionality (1-10)": "funcionalidad",
-    "Recyclability (%)": "reciclabilidad",
-    "Batteries": "B",
-    "Battery Weight (g)": "Wb",
-    "Maintenance": "M",
-    "Components": "C",
-    "Component Weight (g)": "Wc",
-    "Initial Weight (g)": "W0",
-    "Final Weight (g)": "W"
 }
 
 IMPORT_WARNING = (

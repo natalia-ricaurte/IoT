@@ -14,7 +14,7 @@ def radar_chart(metrics, title, key):
         'EW': 'E-waste',
         'ER': 'Energía Renov.', 
         'EE': 'Eficiencia', 
-        'DP': 'Durabilidad',
+        'PD': 'Durabilidad',
         'RC': 'Reciclabilidad', 
         'IM': 'Mantenimiento'
     }

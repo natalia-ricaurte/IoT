@@ -14,7 +14,7 @@ def ahp_attributes(criteria_df):
     return weights.transpose()
 
 # Function to calculate the consistency ratio of the comparison matrix
-def consistency_ratio(weights, comparison_matrix, verbose=True):
+def consistency_ratio(weights, comparison_matrix, verbose=False):
     random_matrix = {
         1: 0.00, 2: 0.00, 3: 0.58, 4: 0.90, 5: 1.12, 6: 1.24, 7: 1.32, 8: 1.41,
         9: 1.45, 10: 1.49, 11: 1.51, 12: 1.48, 13: 1.56, 14: 1.57, 15: 1.59,
@@ -29,9 +29,9 @@ def consistency_ratio(weights, comparison_matrix, verbose=True):
     cr = round(ci / random_matrix[len(comparison_matrix)], 3)
 
     if verbose:
-        print(f"Índice de Consistencia: {ci}")
-        print(f"Razón de Consistencia: {cr}")
-        print("La matriz es consistente." if cr < 0.1 else "La matriz NO es consistente.")
+        print(f"consistency index: {ci}")
+        print(f"consistency ratio: {cr}")
+        print("The matrix is consistent." if cr < 0.1 else "The matrix is not consistent.")
 
     return ci, cr
 

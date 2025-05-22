@@ -9,7 +9,7 @@ import pandas as pd
 import io
 import json
 
-from utils.constants import METRIC_NAMES, EXPORT_COLUMN_MAPPING
+from utils.constants import METRIC_NAMES_ES, METRIC_NAMES, EXPORT_COLUMN_MAPPING
 from utils.helpers import to_dict_flat
 from weights import get_recommended_weights, validate_manual_weights
 
@@ -70,12 +70,12 @@ class ExcelExporter:
                 weight_value = float(weight_value)
             except Exception:
                 weight_value = ''
-            ws[f'A{start_row+2+i}'] = METRIC_NAMES[k]
+            ws[f'A{start_row+2+i}'] = METRIC_NAMES_ES[k]
             ws[f'B{start_row+2+i}'] = weight_value
         
         return start_row + 2 + len(METRIC_NAMES)
 
-    def _create_radar_chart(self, ws, start_row, data, categories, title, position, value_col=8, category_col=7):
+    def _create_radar_chart(self, ws, start_row, data, title, position, value_col=8, category_col=7):
         """Creates a radar chart in the specified worksheet."""
         chart = RadarChart()
         chart.type = "standard"
@@ -101,8 +101,8 @@ class ExcelExporter:
         self.ws_summary[f'A{current_row+1}'] = "Gráfico de Métricas Globales"
         self.ws_summary[f'A{current_row+1}'].font = Font(bold=True)
         
-        metrics = list(METRIC_NAMES.values())
-        values = [st.session_state.global_result['metrics_average'][k] for k in METRIC_NAMES.keys()]
+        metrics = list(METRIC_NAMES_ES.values())
+        values = [st.session_state.global_result['metrics_average'][k] for k in METRIC_NAMES_ES.keys()]
         
         metrics_row = current_row + 3
         for i, (metric, value) in enumerate(zip(metrics, values)):
@@ -119,44 +119,6 @@ class ExcelExporter:
             value_col=2,      # Column B for values
             category_col=1    # Column A for categories
         )
-
-    def _format_header(self, text):
-        """Converts long descriptions into more stylized titles.
-        Example: "Potencia eléctrica en vatios (W) del dispositivo cuando está en funcionamiento." -> "Potencia (W)"
-        """
-        if 'vatios' in text or '(W)' in text:
-            return 'Potencia (W)'
-        if 'horas al día' in text:
-            return 'Horas de uso diario'
-        if 'días al año' in text:
-            return 'Días de uso al año'
-        if 'kilogramos' in text or '(kg)' in text:
-            return 'Peso (kg)'
-        if 'vida útil' in text and 'años' in text:
-            return 'Vida útil (años)'
-        if 'Porcentaje de energía' in text:
-            return 'Energía renovable (%)'
-        if 'funcionalidad' in text:
-            return 'Funcionalidad (1-10)'
-        if 'reciclable' in text or 'reciclabilidad' in text:
-            return 'Reciclabilidad (%)'
-        if 'baterías' in text:
-            return 'Baterías vida útil'
-        if 'batería' in text and 'gramos' in text:
-            return 'Peso batería (g)'
-        if 'mantenimiento' in text and 'veces' in text:
-            return 'Mantenimientos'
-        if 'componentes reemplazados' in text:
-            return 'Componentes reemplazados'
-        if 'componente reemplazado' in text:
-            return 'Peso componente (g)'
-        if 'nuevo' in text and 'gramos' in text:
-            return 'Peso nuevo (g)'
-        if 'final' in text and 'gramos' in text:
-            return 'Peso final (g)'
-        if 'nombre' in text.lower():
-            return 'Nombre del dispositivo'
-        return text
 
     def _create_devices_sheet(self):
         """Creates the sheet with the list of devices."""
@@ -198,32 +160,32 @@ class ExcelExporter:
         inclusion_cell.fill = inclusion_fill
 
         for i, device in enumerate(st.session_state.devices):
-            # Datos del dispositivo
+            # Device data
             for j, col in enumerate(internal_columns):
                 value = device.get(col, 'N/A')
                 ws_devices[f'{get_column_letter(j+1)}{i+4}'] = value
             
-            # Índice de sostenibilidad (resaltado)
+            # Sustainability index (highlighted)
             val_cell = ws_devices[f'{get_column_letter(idx_col)}{i+4}']
-            val_cell.value = device['resultado']['indice_sostenibilidad']
+            val_cell.value = device['result']['sustainability_index']
             val_cell.fill = index_fill
             val_cell.font = Font(bold=True)
             
-            # Inclusión en cálculo global (estilo sutil)
+            # Global calculation inclusion (subtle style)
             inclusion_cell = ws_devices[f'{get_column_letter(inclusion_col)}{i+4}']
             inclusion_cell.value = "Sí" if st.session_state.selected_devices.get(device['id'], True) else "No"
             inclusion_cell.fill = inclusion_fill
-            inclusion_cell.font = Font(bold=False)  # Sin negrita para el valor
+            inclusion_cell.font = Font(bold=False)  # No bold for the value
 
     def _create_device_detail_sheet(self, device):
         """Creates a detail sheet for a specific device."""
-        ws_detail = self.wb.create_sheet(f"Detalle_{device['nombre'][:20]}")
-        ws_detail['A1'] = f"Detalles del Dispositivo: {device['nombre']}"
+        ws_detail = self.wb.create_sheet(f"Detalle_{device['name'][:20]}")
+        ws_detail['A1'] = f"Detalles del Dispositivo: {device['name']}"
         ws_detail['A1'].font = Font(bold=True, size=14)
-        ws_detail['D1'] = f"Índice de Sostenibilidad: {device['resultado']['indice_sostenibilidad']:.2f}/10"
+        ws_detail['D1'] = f"Índice de Sostenibilidad: {device['result']['sustainability_index']:.2f}/10"
         ws_detail['D1'].font = Font(bold=True, size=14)
 
-        # Agregar nota de inclusión en cálculo global
+        # Add global calculation inclusion note
         included = st.session_state.selected_devices.get(device['id'], True)
         ws_detail['A2'] = f"Estado en cálculo global: {'Incluido' if included else 'No incluido'}"
         ws_detail['A2'].font = Font(bold=True, italic=True)
@@ -251,41 +213,72 @@ class ExcelExporter:
             ws_detail[f'B{row+1+i}'] = value
         row_after_table = row + 1 + len(internal_columns)
 
-        # Configuración de pesos
+        # Weights configuration
         config_name = self._get_device_configuration_name(device)
         ws_detail[f'D{row_after_table+2}'] = f"Configuración de pesos utilizada: {config_name}"
         ws_detail[f'D{row_after_table+2}'].font = Font(bold=True)
-        
-        # Tabla de pesos
-        row_after_weights = self._create_weights_table(ws_detail, row_after_table+2, device.get('weights_used', {}))
-        
-        # Métricas normalizadas y gráfico
+                
+        # Normalized metrics and chart
         ws_detail[f'G5'] = "Métricas Normalizadas"
         ws_detail[f'G5'].font = Font(bold=True)
         metrics = []
         values = []
         metrics_row = 6
-        for i, (key, value) in enumerate(device['resultado']['metricas_normalizadas'].items()):
-            ws_detail[f'G{metrics_row+i}'] = METRIC_NAMES[key]
+        for i, (key, value) in enumerate(device['result']['normalized_metrics'].items()):
+            ws_detail[f'G{metrics_row+i}'] = METRIC_NAMES_ES[key]
             ws_detail[f'H{metrics_row+i}'] = value
-            metrics.append(METRIC_NAMES[key])
+            metrics.append(METRIC_NAMES_ES[key])
             values.append(value)
         self._create_radar_chart(
             ws_detail,
             metrics_row,
             values,
             metrics,
-            f"Métricas Normalizadas - {device['nombre']}",
+            f"Métricas Normalizadas - {device['name']}",
             "J5",
             value_col=8,      # Column H for values
             category_col=7    # Column G for categories
         )
 
     def _get_device_configuration_name(self, device):
-        """Gets the name of the weight configuration used for a device."""
-        if 'weights_snapshot' in device:
-            return device['weights_snapshot'].get('nombre_configuracion', 'Desconocido')
-        return "Desconocido"
+        """Gets the name of the weight configuration used for a device.
+    
+        If the configuration name is stored in the snapshot, it is used.
+        Otherwise, it attempts to reconstruct the name from the weight values.
+        """
+        snapshot = device.get('weights_snapshot', {})
+        if 'config_name' in snapshot:
+            return snapshot['config_name']
+        
+        used_weights = device.get('weights_used', {})
+        weight_mode = snapshot.get('mode', None)  # Try to get mode from snapshot, fallback to None
+    
+        try:
+            cleaned_weights = {
+                k: float(list(v.values())[0]) if isinstance(v, dict) else float(v)
+                for k, v in used_weights.items()
+            }
+        except Exception:
+            return "Desconocido"
+
+        if weight_mode == "Ajuste Manual":
+            from weights import get_recommended_weights
+            recommended = get_recommended_weights()
+            if to_dict_flat(cleaned_weights) == to_dict_flat(recommended):
+                return "Pesos Recomendados"
+        
+            for name, config in st.session_state.saved_weights.items():
+                if to_dict_flat(config) == to_dict_flat(cleaned_weights):
+                    return f"Configuración Manual: {name}"
+            return "Pesos Manuales Personalizados"
+
+        elif weight_mode == "Calcular nuevos pesos":
+            for config_name, config in st.session_state.ahp_configurations.items():
+                if to_dict_flat(config['weights']) == to_dict_flat(cleaned_weights):
+                    return f"Configuración Calculada: {config_name}"
+            return "Pesos Calculados"
+    
+        return "Pesos Recomendados"
 
     def export(self):
         """Exports all data to an Excel file."""
@@ -296,11 +289,10 @@ class ExcelExporter:
         for device in st.session_state.devices:
             self._create_device_detail_sheet(device)
         
-        # Save the file
-        buffer = BytesIO()
-        self.wb.save(buffer)
-        buffer.seek(0)
-        return buffer
+        excel_file = BytesIO()
+        self.wb.save(excel_file)
+        excel_file.seek(0)
+        return excel_file
 
 def export_results_excel():
     """Exports the results to an Excel file."""
@@ -313,12 +305,12 @@ def export_devices_list(devices, format='excel'):
     using template column names for maximum compatibility.
     Returns a buffer (Excel), encoded string (CSV) or encoded string (JSON).
     """
-    mapeo_columnas = EXPORT_COLUMN_MAPPING
-    columnas_internas = list(mapeo_columnas.keys())
-    headers = [mapeo_columnas[col] for col in columnas_internas]
+    column_mapping = EXPORT_COLUMN_MAPPING
+    internal_columns = list(column_mapping.keys())
+    headers = [column_mapping[col] for col in internal_columns]
     data = []
     for device in devices:
-        row = [device.get(col, '') for col in columnas_internas]
+        row = [device.get(col, '') for col in internal_columns]
         data.append(row)
     df = pd.DataFrame(data, columns=headers)
     if format == 'excel':
@@ -332,7 +324,7 @@ def export_devices_list(devices, format='excel'):
         return csv.encode('utf-8')
     elif format == 'json':
         data_json = [
-            {mapeo_columnas[col]: device.get(col, '') for col in columnas_internas}
+            {column_mapping[col]: device.get(col, '') for col in internal_columns}
             for device in devices
         ]
         json_str = json.dumps(data_json, indent=2, ensure_ascii=False)
