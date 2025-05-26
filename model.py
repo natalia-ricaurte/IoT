@@ -15,7 +15,7 @@ class IoTSustainability:
         }
         self.references = {
             'EC': {'min': 0, 'max': 100},
-            'CF': {'min': 0, 'max': 50},
+            'CF': {'min': 0, 'max': 25},
             'EW': {'min': 0, 'max': 2},
             'RE': {'min': 0, 'max': 100},
             'EE': {'min': 0, 'max': 10},
