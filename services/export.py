@@ -21,38 +21,12 @@ class ExcelExporter:
         self.calculation_date = st.session_state.get('global_calculation_date', 
                                                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-    def _get_weights_configuration(self):
-        """Gets the current weight configuration and its name."""
-        if st.session_state.weight_mode_radio == "Calcular nuevos pesos" and 'ahp_weights' in st.session_state:
-            config_name = "Pesos Calculados"
-            global_weights = st.session_state.ahp_weights
-            for config_name, config in st.session_state.ahp_configurations.items():
-                if to_dict_flat(config['weights']) == to_dict_flat(global_weights):
-                    config_name = f"Configuración Calculada: {config_name}"
-                    break
-        elif st.session_state.weight_mode_radio == "Ajuste Manual":
-            config_name = "Pesos Manuales Personalizados"
-            manual_weights = {k: st.session_state[f"manual_weight_{k}"] for k in METRIC_NAMES}
-            global_weights, _ = validate_manual_weights(manual_weights)
-            for config_name, config in st.session_state.saved_weights.items():
-                if to_dict_flat(config) == to_dict_flat(global_weights):
-                    config_name = f"Configuración Manual: {config_name}"
-                    break
-        else:
-            config_name = "Pesos Recomendados"
-            global_weights = RECOMMENDED_WEIGHTS
-        
-        return config_name, global_weights
-
     def _create_summary_header(self):
         """Creates the header for the summary sheet."""
         self.ws_summary['A1'] = "Dashboard de Evaluación de Sostenibilidad - Dispositivos IoT"
         self.ws_summary['A1'].font = Font(bold=True, size=14)
         self.ws_summary['A3'] = f"Fecha y hora del cálculo: {self.calculation_date}"
         self.ws_summary['A4'] = f"Índice de Sostenibilidad Global: {st.session_state.global_result['total_average']:.2f}/10"
-        
-        config_name, _ = self._get_weights_configuration()
-        self.ws_summary['A5'] = f"Configuración de pesos utilizada: {config_name}"
 
     def _create_weights_table(self, ws, start_row, weights):
         """Creates a table of weights in the specified worksheet."""
@@ -92,29 +66,64 @@ class ExcelExporter:
     def _create_summary_sheet(self):
         """Creates the summary sheet with all its components."""
         self._create_summary_header()
-        _, global_weights = self._get_weights_configuration()
-        
-        # Weights table
-        current_row = self._create_weights_table(self.ws_summary, 7, global_weights)
         
         # Global metrics chart
-        self.ws_summary[f'A{current_row+1}'] = "Gráfico de Métricas Globales"
-        self.ws_summary[f'A{current_row+1}'].font = Font(bold=True)
+        self.ws_summary['A6'] = "Análisis de Desempeño Ambiental - Métricas Globales"
+        self.ws_summary['A6'].font = Font(bold=True, size=12)
+        
+        # Añadir nota explicativa sobre los colores
+        self.ws_summary['A7'] = "Nota: Los colores indican el nivel de desempeño de cada métrica:"
+        self.ws_summary['A7'].font = Font(bold=True)
+        self.ws_summary['A8'] = "🟢 Verde: Alto desempeño (8-10)"
+        self.ws_summary['A8'].font = Font(color="5fba7d")
+        self.ws_summary['A9'] = "🟡 Amarillo: Desempeño moderado (5-7.99)"
+        self.ws_summary['A9'].font = Font(color="ffd700")
+        self.ws_summary['A10'] = "🔴 Rojo: Bajo desempeño (< 5)"
+        self.ws_summary['A10'].font = Font(color="ff6b6b")
+        
+        # Añadir guía de interpretación
+        self.ws_summary['A11'] = "Guía de interpretación:"
+        self.ws_summary['A11'].font = Font(bold=True)
+        self.ws_summary['A12'] = "• Valores cercanos a 10 indican alto desempeño ambiental"
+        self.ws_summary['A13'] = "• Valores bajos indican áreas con potencial de mejora"
         
         metrics = list(METRIC_NAMES_ES.values())
         values = [st.session_state.global_result['metrics_average'][k] for k in METRIC_NAMES_ES.keys()]
         
-        metrics_row = current_row + 3
+        metrics_row = 15  # Ajustado para dejar espacio a las notas
+        
         for i, (metric, value) in enumerate(zip(metrics, values)):
             self.ws_summary[f'A{metrics_row+i}'] = metric
             self.ws_summary[f'B{metrics_row+i}'] = value
+            
+            # Aplicar color según el valor
+            if value >= 8:
+                color = "E8F5E9"  # Verde muy suave
+            elif value >= 5:
+                color = "FFFDE7"  # Amarillo muy suave
+            else:
+                color = "FFEBEE"  # Rojo muy suave
+                
+            self.ws_summary[f'B{metrics_row+i}'].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+        
+        # Añadir métricas destacadas
+        highlight_row = metrics_row + len(metrics) + 2
+        self.ws_summary[f'A{highlight_row}'] = "Métricas más destacadas:"
+        self.ws_summary[f'A{highlight_row}'].font = Font(bold=True)
+        
+        # Encontrar mejor y peor métrica
+        best_idx = values.index(max(values))
+        worst_idx = values.index(min(values))
+        
+        self.ws_summary[f'A{highlight_row+1}'] = f"🏆 Mejor desempeño: {metrics[best_idx]} ({values[best_idx]:.2f})"
+        self.ws_summary[f'A{highlight_row+2}'] = f"⚠️ Necesita atención: {metrics[worst_idx]} ({values[worst_idx]:.2f})"
         
         self._create_radar_chart(
             self.ws_summary, 
             metrics_row,  # Start row for normalized metrics
             values,
             "Promedio de Métricas Normalizadas",
-            f"D{current_row+1}"
+            f"G{metrics_row-2}"  # Cambiado de D a G para mover 3 columnas a la derecha
         )
 
     def _create_devices_sheet(self):

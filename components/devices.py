@@ -3,9 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from components.charts import radar_chart
-from utils.constants import METRIC_NAMES, METRIC_NAMES_ES, RECOMMENDED_WEIGHTS
-from utils.helpers import create_weights_snapshot
-from weights import validate_manual_weights
+from utils.constants import METRIC_NAMES_ES
 
 def show_device(device, idx):
     """Shows the chart, recommendations and complete details of the device."""
@@ -132,17 +130,6 @@ def show_global_results():
     if "global_result" not in st.session_state or st.session_state["global_result"] is None:
         return
 
-    # Determine weights used in global calculation
-    if "ahp_weights" in st.session_state and st.session_state.weight_mode_radio == "Calcular nuevos pesos":
-        global_weights = st.session_state.ahp_weights
-    elif st.session_state.weight_mode_radio == "Ajuste Manual":
-        manual_weights = {k: st.session_state.get(f"manual_weight_{k}", 0) for k in METRIC_NAMES}
-        global_weights, _ = validate_manual_weights(manual_weights)
-    else:
-        global_weights = RECOMMENDED_WEIGHTS
-    # Save global weights snapshot to show configuration name
-    st.session_state['weights_snapshot'] = create_weights_snapshot(global_weights, st.session_state.weight_mode_radio)
-
     st.markdown("---")
     global_result = st.session_state.global_result
     total_average = global_result["total_average"]
@@ -193,25 +180,64 @@ def show_global_results():
         used_weights = [str(d.get('used_weights', {})) for d in included_devices]
         if len(set(used_weights)) > 1:
             st.warning("Atención: los dispositivos fueron evaluados con diferentes configuraciones de pesos. Los índices individuales pueden no ser directamente comparables.")
+        
+        # Añadir tabla de métricas globales
+        st.markdown("**Promedios Globales por Métrica de Sostenibilidad**")
+        
+        # Guía de interpretación
+        st.info("""
+        📊 **Guía de interpretación:**
+        - Valores cercanos a 10 indican alto desempeño ambiental
+        - Valores bajos indican áreas con potencial de mejora
+        """)
+        
+        # Crear DataFrame con métricas y valores
+        metrics_df = pd.DataFrame({
+            'Métrica': list(METRIC_NAMES_ES.values()),
+            'Valor Normalizado': [metrics_average[k] for k in METRIC_NAMES_ES.keys()]
+        })
+        
+        # Ordenar por valor normalizado descendente
+        metrics_df = metrics_df.sort_values('Valor Normalizado', ascending=False)
+        
+        # Añadir columna de Desempeño
+        metrics_df['Desempeño'] = metrics_df['Valor Normalizado'].apply(
+            lambda x: '🟢 Alto' if x >= 8 else '🟡 Moderado' if x >= 5 else '🔴 Bajo'
+        )
+        
+        # Crear barras de progreso HTML
+        def create_progress_bar(value):
+            percentage = (value / 10) * 100
+            # Definir color según el valor
+            if value >= 8:
+                color = '#5fba7d'  # Verde para alto desempeño
+            elif value >= 5:
+                color = '#ffd700'  # Amarillo para desempeño moderado
+            else:
+                color = '#ff6b6b'  # Rojo para bajo desempeño
+                
+            return f'<div style="width: 100px; height: 8px; background-color: #e9ecef; border-radius: 4px;">' \
+                   f'<div style="width: {percentage}%; height: 100%; background-color: {color}; border-radius: 4px;"></div>' \
+                   f'</div>'
+        
+        # Aplicar barras de progreso
+        metrics_df['Valor Normalizado'] = metrics_df['Valor Normalizado'].apply(
+            lambda x: f"{create_progress_bar(x)} {x:.2f}"
+        )
+        
+        # Reordenar columnas
+        metrics_df = metrics_df[['Métrica', 'Valor Normalizado', 'Desempeño']]
+        
+        # Mostrar la tabla con formato HTML
+        st.markdown(metrics_df.to_html(escape=False, index=False), unsafe_allow_html=True)
+        
+        # Mostrar las métricas más altas y más bajas
+        st.markdown(f"""
+        **Métricas más destacadas:**
+        - 🏆 Mejor desempeño: {metrics_df.iloc[0]['Métrica']} ({metrics_average[list(METRIC_NAMES_ES.keys())[0]]:.2f})
+        - ⚠️ Necesita atención: {metrics_df.iloc[-1]['Métrica']} ({metrics_average[list(METRIC_NAMES_ES.keys())[-1]]:.2f})
+        """)
             
-        st.markdown("**Pesos utilizados para el cálculo global**")
-        # Get configuration name from weights snapshot
-        config_name = st.session_state.get('weights_snapshot', {}).get('config_name', 'Desconocido')
-        st.markdown(f"**Configuración de pesos:** {config_name}")
-        
-        clean_weights = {}
-        for k, v in global_weights.items():
-            if isinstance(v, dict):
-                v = list(v.values())[0]
-            try:
-                clean_weights[k] = float(v)
-            except Exception:
-                continue
-        df_weights = pd.DataFrame.from_dict(clean_weights, orient='index', columns=['Peso'])
-        df_weights.index = df_weights.index.map(METRIC_NAMES_ES)
-        df_weights = df_weights.rename_axis('Métrica').reset_index()
-        st.dataframe(df_weights.style.format({'Peso': '{:.3f}'}), use_container_width=True)
-        
         st.markdown("**Dispositivos incluidos en el cálculo global**")
         if included_devices:
             device_data = {
