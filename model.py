@@ -75,7 +75,7 @@ class IoTSustainability:
         ref = self.references[metric_code]
         min_val = ref['min']
         max_val = ref['max']
-        if metric_code in ['EC', 'CF', 'EW']:
+        if metric_code in ['EC', 'CF', 'EW', 'MT']:
             if value >= max_val: return 0
             elif value <= min_val: return 10
             else: return 10 - (10 * (value - min_val) / (max_val - min_val))
