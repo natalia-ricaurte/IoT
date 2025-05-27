@@ -191,51 +191,57 @@ def show_global_results():
         - Valores bajos indican áreas con potencial de mejora
         """)
         
-        # Crear DataFrame con métricas y valores
+        # Create DataFrame with metrics and values
         metrics_df = pd.DataFrame({
             'Métrica': list(METRIC_NAMES_ES.values()),
             'Valor Normalizado': [metrics_average[k] for k in METRIC_NAMES_ES.keys()]
         })
         
-        # Ordenar por valor normalizado descendente
+        # Sort by normalized value in descending order
         metrics_df = metrics_df.sort_values('Valor Normalizado', ascending=False)
         
-        # Añadir columna de Desempeño
+        # Store original values before formatting
+        original_values = metrics_df['Valor Normalizado'].copy()
+        
+        # Add Performance column
         metrics_df['Desempeño'] = metrics_df['Valor Normalizado'].apply(
             lambda x: '🟢 Alto' if x >= 8 else '🟡 Moderado' if x >= 5 else '🔴 Bajo'
         )
         
-        # Crear barras de progreso HTML
+        # Create progress bar HTML
         def create_progress_bar(value):
             percentage = (value / 10) * 100
-            # Definir color según el valor
+            # Define color based on value
             if value >= 8:
-                color = '#5fba7d'  # Verde para alto desempeño
+                color = '#5fba7d'  # Green for high performance
             elif value >= 5:
-                color = '#ffd700'  # Amarillo para desempeño moderado
+                color = '#ffd700'  # Yellow for moderate performance
             else:
-                color = '#ff6b6b'  # Rojo para bajo desempeño
+                color = '#ff6b6b'  # Red for low performance
                 
             return f'<div style="width: 100px; height: 8px; background-color: #e9ecef; border-radius: 4px;">' \
                    f'<div style="width: {percentage}%; height: 100%; background-color: {color}; border-radius: 4px;"></div>' \
                    f'</div>'
         
-        # Aplicar barras de progreso
+        # Apply progress bars
         metrics_df['Valor Normalizado'] = metrics_df['Valor Normalizado'].apply(
             lambda x: f"{create_progress_bar(x)} {x:.2f}"
         )
         
-        # Reordenar columnas
+        # Reorder columns
         metrics_df = metrics_df[['Métrica', 'Valor Normalizado', 'Desempeño']]
         
-        # Mostrar la tabla con formato HTML
+        # Display table with HTML formatting
         st.markdown(metrics_df.to_html(escape=False, index=False), unsafe_allow_html=True)
         
-        # Mostrar las métricas más altas y más bajas
+        # Show highest and lowest metrics using original values
+        best_metric = metrics_df.iloc[0]
+        worst_metric = metrics_df.iloc[-1]
+        
         st.markdown(f"""
         **Métricas más destacadas:**
-        - 🏆 Mejor desempeño: {metrics_df.iloc[0]['Métrica']} ({metrics_average[list(METRIC_NAMES_ES.keys())[0]]:.2f})
-        - ⚠️ Necesita atención: {metrics_df.iloc[-1]['Métrica']} ({metrics_average[list(METRIC_NAMES_ES.keys())[-1]]:.2f})
+        - 🏆 Mejor desempeño: {best_metric['Métrica']} ({original_values.iloc[0]:.2f})
+        - ⚠️ Necesita atención: {worst_metric['Métrica']} ({original_values.iloc[-1]:.2f})
         """)
             
         st.markdown("**Dispositivos incluidos en el cálculo global**")

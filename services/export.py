@@ -71,7 +71,7 @@ class ExcelExporter:
         self.ws_summary['A6'] = "Análisis de Desempeño Ambiental - Métricas Globales"
         self.ws_summary['A6'].font = Font(bold=True, size=12)
         
-        # Añadir nota explicativa sobre los colores
+        # Add explanatory note about colors
         self.ws_summary['A7'] = "Nota: Los colores indican el nivel de desempeño de cada métrica:"
         self.ws_summary['A7'].font = Font(bold=True)
         self.ws_summary['A8'] = "🟢 Verde: Alto desempeño (8-10)"
@@ -81,7 +81,7 @@ class ExcelExporter:
         self.ws_summary['A10'] = "🔴 Rojo: Bajo desempeño (< 5)"
         self.ws_summary['A10'].font = Font(color="ff6b6b")
         
-        # Añadir guía de interpretación
+        # Add interpretation guide
         self.ws_summary['A11'] = "Guía de interpretación:"
         self.ws_summary['A11'].font = Font(bold=True)
         self.ws_summary['A12'] = "• Valores cercanos a 10 indican alto desempeño ambiental"
@@ -90,28 +90,28 @@ class ExcelExporter:
         metrics = list(METRIC_NAMES_ES.values())
         values = [st.session_state.global_result['metrics_average'][k] for k in METRIC_NAMES_ES.keys()]
         
-        metrics_row = 15  # Ajustado para dejar espacio a las notas
+        metrics_row = 15  # Adjusted to leave space for notes
         
         for i, (metric, value) in enumerate(zip(metrics, values)):
             self.ws_summary[f'A{metrics_row+i}'] = metric
             self.ws_summary[f'B{metrics_row+i}'] = value
             
-            # Aplicar color según el valor
+            # Apply color based on value
             if value >= 8:
-                color = "E8F5E9"  # Verde muy suave
+                color = "E8F5E9"  # Very light green
             elif value >= 5:
-                color = "FFFDE7"  # Amarillo muy suave
+                color = "FFFDE7"  # Very light yellow
             else:
-                color = "FFEBEE"  # Rojo muy suave
+                color = "FFEBEE"  # Very light red
                 
             self.ws_summary[f'B{metrics_row+i}'].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
         
-        # Añadir métricas destacadas
+        # Add highlighted metrics
         highlight_row = metrics_row + len(metrics) + 2
         self.ws_summary[f'A{highlight_row}'] = "Métricas más destacadas:"
         self.ws_summary[f'A{highlight_row}'].font = Font(bold=True)
         
-        # Encontrar mejor y peor métrica
+        # Find best and worst metrics
         best_idx = values.index(max(values))
         worst_idx = values.index(min(values))
         
