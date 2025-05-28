@@ -1,4 +1,3 @@
-
 # Sustainability Evaluation for IoT Devices
 
 This undergraduate thesis project, developed by Juan Camilo Pacheco, Natalia Andrea Ricaurte, and Laura Valentina Lara, implements an interactive system for assessing the environmental sustainability of IoT systems, with a focus on the operational phase of devices.
@@ -17,6 +16,9 @@ The system allows users to assign custom weights to sustainability metrics using
   - [2. Device Management](#2-device-management)
   - [3. Device Selection](#3-device-selection)
   - [4. Calculation and Results](#4-calculation-and-results)
+- [Data Validation and Ranges](#data-validation-and-ranges)
+- [Understanding Results](#understanding-results)
+- [Default Weights](#default-weights)
 - [Data Export](#data-export)
 - [Project Structure](#project-structure)
 - [Contact](#contact)
@@ -74,7 +76,7 @@ pip install -r requirements.txt
 
 3. Run the application:
 ```bash
-streamlit run app.py
+python -m streamlit run app.py
 ```
 
 ## User Guide
@@ -93,7 +95,7 @@ streamlit run app.py
 
 #### Import Template
 | Column                   | Description                                                     |
-|--------------------------|-----------------------------------------------------------------|
+|:------------------------|:---------------------------------------------------------------|
 | nombre                   | Descriptive name of the IoT device                              |
 | potencia_w               | Power consumption in watts (W)                                  |
 | horas_uso_diario         | Hours of daily operation                                        |
@@ -123,6 +125,99 @@ streamlit run app.py
 - Review charts and detailed metrics.
 - Export results to Excel with full traceability.
 
+## Data Validation and Ranges
+
+The system validates all input data according to the following ranges and types:
+
+### Input Fields and Valid Ranges
+| Field | Type | Valid Range | Description |
+|:------|:-----|:------------|:------------|
+| Power (W) | Float | > 0 | Device power consumption in watts |
+| Daily Usage (hours) | Float | 0-24 | Hours of operation per day |
+| Annual Usage (days) | Integer | 0-365 | Days of operation per year |
+| Weight (kg) | Float | > 0 | Total device weight in kilograms |
+| Lifespan (years) | Integer | > 0 | Expected device lifespan |
+| Renewable Energy (%) | Float | 0-100 | Percentage of renewable energy used |
+| Functionality (1-10) | Float | 1-10 | Device functionality rating |
+| Recyclability (%) | Float | 0-100 | Percentage of recyclable materials |
+| Batteries | Integer | ≥ 0 | Number of batteries used |
+| Battery Weight (g) | Float | ≥ 0 | Weight of each battery |
+| Maintenance | Integer | ≥ 0 | Number of maintenance operations |
+| Replaced Components | Integer | ≥ 0 | Number of components replaced |
+| Component Weight (g) | Float | ≥ 0 | Weight of each component |
+| Initial Weight (g) | Float | > 0 | Device weight when new |
+| Final Weight (g) | Float | > 0 | Device weight after use |
+
+### Validation Rules
+- All numeric fields must be positive numbers
+- Percentages must be between 0 and 100
+- Functionality must be between 1 and 10
+- Time values must be within logical ranges (e.g., daily hours ≤ 24)
+- Weights must be positive and final weight must be less than or equal to initial weight
+
+## Understanding Results
+
+### Normalization Scale
+All metrics are normalized to a 0-10 scale where:
+- 10 represents the best possible performance
+- 0 represents the worst possible performance
+
+### Color Coding in Results
+Results are color-coded for easy interpretation:
+- 🟢 Green (8-10): High performance
+- 🟡 Yellow (5-7.99): Moderate performance
+- 🔴 Red (< 5): Low performance
+
+### Global Index Calculation
+The global sustainability index is calculated as:
+1. Each metric is normalized to 0-10 scale
+2. Normalized values are weighted according to the selected configuration
+3. The global index is the weighted sum of all metrics
+4. For multiple devices, the global index is the average of individual indices
+
+### Metric Interpretation
+All metrics follow the principle that higher values indicate better performance:
+- Energy Consumption (EC): Higher values indicate better energy management
+- Carbon Footprint (CF): Higher values indicate better carbon management
+- Electronic Waste (EW): Higher values indicate better waste management
+- Renewable Energy (RE): Higher values indicate better renewable energy usage
+- Energy Efficiency (EE): Higher values indicate better efficiency
+- Product Durability (PD): Higher values indicate better durability
+- Recyclability (RC): Higher values indicate better recyclability
+- Maintenance (MT): Higher values indicate better maintenance management
+
+## Default Weights
+
+### Recommended Weights
+The system provides recommended weights based on a structured prioritization method that combines:
+1. Alignment with Sustainable Development Goals (SDGs)
+2. Qualitative assessment of environmental impact
+
+| Metric | Weight | Description |
+|:-------|:-------|:------------|
+| Energy Consumption (EC) | 0.3267 | Highest weight due to direct environmental impact |
+| Carbon Footprint (CF) | 0.1992 | High weight for climate change impact |
+| Renewable Energy (RE) | 0.1992 | High weight for sustainable energy use |
+| Electronic Waste (EW) | 0.0811 | Medium weight for resource management |
+| Energy Efficiency (EE) | 0.0811 | Medium weight for operational efficiency |
+| Product Durability (PD) | 0.0477 | Lower weight for product lifecycle |
+| Recyclability (RC) | 0.0477 | Lower weight for end-of-life management |
+| Maintenance (MT) | 0.0174 | Lowest weight for operational aspects |
+
+### Weight Calculation Method
+The recommended weights were derived using:
+1. A structured prioritization method based on environmental relevance
+2. Saaty's pairwise comparison technique
+3. Integration of SDG alignment and environmental impact assessment
+4. Validation through consistency ratio (CR = 0.037, below the 0.10 threshold)
+
+### Custom Weight Configuration
+Users can:
+- Use the recommended weights
+- Manually adjust weights (system will normalize to sum 1)
+- Calculate new weights using pairwise comparison
+- Save and load custom weight configurations
+
 ## Data Export
 
 ### Full Results (.xlsx)
@@ -151,7 +246,9 @@ IoT/
 ├── components/            # UI components (forms, charts, weights_ui)
 ├── services/              # Auxiliary services (import_service, export, ahp_service)
 ├── utils/                 # Constants, state management, helpers
-└── requirements.txt       # Project dependencies
+├── requirements.txt       # Project dependencies
+└── readme.md              # This file
+
 ```
 
 ## Contact
@@ -170,7 +267,11 @@ IoT/
 - **API Integration:** Connect to APIs from energy providers and IoT services to retrieve real-time data.
 - **Specialized Export Formats:** Support exporting reports formatted for corporate sustainability reporting or environmental certifications.
 - **Import format validation** validate column names and data types
+- **Data validation** validate data before calculating the index for manual inputs
 - **Device management** allow user to edit device data
+- **Data processong and Edge Computing**: integrate factor  of Edge Computing for specific contexts
+- **Recommendations**: add recommendations for results obtained on exported files
+- **Lenguage modifications**: add feature to change UI language "English" and "Español"
 
 ## Model Integrity Note
 
@@ -183,7 +284,7 @@ The system maintains all sustainability metrics as an integral set for the follo
 
 ### Scientific Validity
 - The AHP+SDG model was developed considering all metrics.
-- Weights were calculated based on each metric’s relative importance.
+- Weights were calculated based on each metric's relative importance.
 - The pairwise comparison matrix was built with all metrics in mind.
 
 ### Project Purpose
